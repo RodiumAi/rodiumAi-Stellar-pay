@@ -11,11 +11,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --build && tsc -p tsconfig.tools.json",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --build && tsc -p tsconfig.tools.json && tsc -p packages/db/test",
+    "test": "vitest run --project unit",
+    "test:int": "vitest run --project int",
+    "db:start": "supabase --workdir infra start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
+    "db:stop": "supabase --workdir infra stop",
+    "test:coverage": "vitest run --project unit --coverage",
     "secrets:scan": "gitleaks git --redact --no-banner",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm audit --audit-level high && pnpm secrets:scan && ./scripts/verify-contracts.sh"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm audit --audit-level high && pnpm secrets:scan && ./scripts/verify-db.sh && ./scripts/verify-contracts.sh"
   },
   "devDependencies": {
     "@types/node": "24.19.0",
