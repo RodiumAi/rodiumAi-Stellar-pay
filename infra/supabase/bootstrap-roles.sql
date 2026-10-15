@@ -1,4 +1,6 @@
--- Bootstrap for context §7.3. Run as the Supabase `postgres` role, once per
+-- Bootstrap for context §7.3. Deliberately NOT named `roles.sql`: the Supabase CLI
+-- auto-runs that file on `supabase start` without the password settings below.
+-- Run as the Supabase `postgres` role, once per
 -- project and again whenever passwords rotate. Idempotent.
 --
 -- Passwords are read from session settings so they never appear in this file

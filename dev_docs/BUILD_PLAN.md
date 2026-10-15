@@ -222,7 +222,7 @@ Scope:
 - Kysely types; repositories for payments, subscriptions, charges, receipts, outbox, cursors, audit log.
 - Write patterns §7.2: single-transaction receipt+payment+outbox, `ON CONFLICT DO NOTHING`, atomic `amount_received + $n`, conditional transitions (`UPDATE … WHERE status = $expected RETURNING`), `FOR UPDATE SKIP LOCKED` claiming, advisory-lock helper on a session connection.
 - Idempotency: same key + same hash → original response; different hash → `idempotency_conflict`.
-- `infra/supabase/roles.sql` + `settings.md` checklist (§7.4).
+- `infra/supabase/bootstrap-roles.sql` + `settings.md` checklist (§7.4).
 - Local dev: `supabase start` (same Postgres major as prod).
 
 Tests before push (integration, against local Supabase):

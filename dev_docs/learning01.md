@@ -187,15 +187,24 @@ Supabase Postgres segfaults on `GRANT … TO current_user`
 
 - What: integration setup died with "Connection terminated unexpectedly"; Postgres log: "server process … was terminated by signal 11: Segmentation fault".
 - Why: in image `supabase/postgres:17.6.1.134`, a literal `GRANT rp_owner TO current_user` crashes the backend (role hook). `CREATE ROLE` in DO blocks is fine.
-- Fix: `roles.sql` builds it with `format('GRANT rp_owner TO %I', current_user)`; isolated by running each statement alone.
+- Fix: `bootstrap-roles.sql` builds it with `format('GRANT rp_owner TO %I', current_user)`; isolated by running each statement alone.
 - Prevent: `infra/supabase/settings.md` notes it; re-test when the image is upgraded.
 
 ### 2026-10-15 · S3 · db · decision
 
 Schema, roles and repositories
 
-- What: migrations 0001 (schema §7.1) + 0002 (grants/policies §7.3) by a checksum-guarded, advisory-locked runner; `roles.sql` bootstrap with passwords passed via `set_config`; Kysely repositories; `recordPaymentReceipt` = receipt + payment + outbox in one transaction, locking the payment row so parallel receipts serialize; int8 → bigint via per-pool type parser.
-- Why: spec puts `CREATE SCHEMA pay` with the tables, but `ALTER SCHEMA … OWNER TO rp_owner` needs the roles first, so the schema moved into `roles.sql`.
+- What: migrations 0001 (schema §7.1) + 0002 (grants/policies §7.3) by a checksum-guarded, advisory-locked runner; `bootstrap-roles.sql` bootstrap with passwords passed via `set_config`; Kysely repositories; `recordPaymentReceipt` = receipt + payment + outbox in one transaction, locking the payment row so parallel receipts serialize; int8 → bigint via per-pool type parser.
+- Why: spec puts `CREATE SCHEMA pay` with the tables, but `ALTER SCHEMA … OWNER TO rp_owner` needs the roles first, so the schema moved into `bootstrap-roles.sql`.
 - Env: Colima VM has 2 CPU / 2 GB, so `pnpm db:start` runs only the Postgres container.
 - Verified: 43 integration tests (roles, CHECKs, idempotency, parallel receipts, SKIP LOCKED, advisory lock); CI job `db-integration`.
 - Added `.env.example` (Supabase per-role URLs, Upstash REST URL/token, keys) at the user's request.
+
+### 2026-10-15 · S3 · ci · ci-fail
+
+Supabase CLI auto-runs `supabase/roles.sql`
+
+- What: CI `pnpm db:start` failed inside our role bootstrap ("setting … must hold a password of at least 32 characters").
+- Why: the CLI executes `<workdir>/supabase/roles.sql` on start; locally the container predated the file, so it never ran.
+- Fix: renamed to `infra/supabase/bootstrap-roles.sql`; refs updated (context §4, plan, `.env.example`).
+- Verified: local `db:stop` + `db:start` + `pnpm test:int` → 43 passed.

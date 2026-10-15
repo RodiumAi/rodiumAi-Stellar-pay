@@ -8,7 +8,9 @@ import { bootstrapRoles, migrate, type RolePasswords } from '../src/migrate.js';
 const ADMIN_URL =
   process.env['RP_TEST_DB_ADMIN_URL'] ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
-const rolesSql = fileURLToPath(new URL('../../../infra/supabase/roles.sql', import.meta.url));
+const rolesSql = fileURLToPath(
+  new URL('../../../infra/supabase/bootstrap-roles.sql', import.meta.url),
+);
 const migrationsDir = fileURLToPath(new URL('../migrations', import.meta.url));
 
 function urlFor(base: string, user: string, password: string, database: string): string {
