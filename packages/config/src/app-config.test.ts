@@ -4,7 +4,7 @@ import { MAINNET, TESTNET } from './network.js';
 
 const valid = {
   NODE_ENV: 'test',
-  STELLAR_NETWORK: 'testnet',
+  RP_STELLAR_NETWORK: 'testnet',
   MERCHANT_ADDRESS: `G${'A'.repeat(55)}`,
   SUBSCRIPTION_CONTRACT_ID: `C${'B'.repeat(55)}`,
   MAX_FEE_STROOPS: '100000',
@@ -38,8 +38,8 @@ describe('loadConfig', () => {
   it('loads mainnet when an RPC URL is given', () => {
     const result = loadConfig({
       ...valid,
-      STELLAR_NETWORK: 'mainnet',
-      STELLAR_RPC_URL: 'https://rpc.example.com',
+      RP_STELLAR_NETWORK: 'mainnet',
+      RP_STELLAR_RPC_URL: 'https://rpc.example.com',
     });
     expect(result.ok && result.value.network.usdc).toEqual(MAINNET.usdc);
     expect(result.ok && result.value.network.horizonUrl).toBe('https://horizon.stellar.org');
@@ -51,10 +51,10 @@ describe('loadConfig', () => {
   });
 
   it.each<[string, Record<string, string | undefined>, string]>([
-    ['missing network', { STELLAR_NETWORK: undefined }, 'STELLAR_NETWORK'],
-    ['unknown network', { STELLAR_NETWORK: 'futurenet' }, 'STELLAR_NETWORK'],
-    ['mainnet without RPC', { STELLAR_NETWORK: 'mainnet' }, 'STELLAR_RPC_URL'],
-    ['http RPC', { STELLAR_RPC_URL: 'http://rpc.example.com' }, 'STELLAR_RPC_URL'],
+    ['missing network', { RP_STELLAR_NETWORK: undefined }, 'RP_STELLAR_NETWORK'],
+    ['unknown network', { RP_STELLAR_NETWORK: 'futurenet' }, 'RP_STELLAR_NETWORK'],
+    ['mainnet without RPC', { RP_STELLAR_NETWORK: 'mainnet' }, 'RP_STELLAR_RPC_URL'],
+    ['http RPC', { RP_STELLAR_RPC_URL: 'http://rpc.example.com' }, 'RP_STELLAR_RPC_URL'],
     ['contract as merchant', { MERCHANT_ADDRESS: `C${'A'.repeat(55)}` }, 'MERCHANT_ADDRESS'],
     ['bad contract id', { SUBSCRIPTION_CONTRACT_ID: 'C123' }, 'SUBSCRIPTION_CONTRACT_ID'],
     ['float fee', { MAX_FEE_STROOPS: '1.5' }, 'MAX_FEE_STROOPS'],
@@ -71,7 +71,7 @@ describe('loadConfig', () => {
 
   it('never echoes values in error messages', () => {
     const secretish = 'http://user:hunter2@rpc.example.com';
-    const result = loadConfig({ ...valid, STELLAR_RPC_URL: secretish });
+    const result = loadConfig({ ...valid, RP_STELLAR_RPC_URL: secretish });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.issues.join(' ')).not.toContain('hunter2');
   });
