@@ -4,6 +4,24 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    "./audit-log": "./src/audit-log.ts",
+    "./connection": "./src/connection.ts",
+    "./cursors": "./src/cursors.ts",
+    "./leader-lock": "./src/leader-lock.ts",
+    "./migrate": "./src/migrate.ts",
+    "./outbox": "./src/outbox.ts",
+    "./payment-receipts": "./src/payment-receipts.ts",
+    "./payments": "./src/payments.ts",
+    "./receipts": "./src/receipts.ts",
+    "./schema": "./src/schema.ts",
+    "./subscriptions": "./src/subscriptions.ts"
+  },
+  "dependencies": {
+    "@rp/core": "workspace:*",
+    "kysely": "0.29.6",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
   }
 }

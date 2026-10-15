@@ -71,8 +71,8 @@ export default defineConfig(
     },
   },
   {
-    // Tool configs (vitest, eslint) are loaded by their tools via default export.
-    files: ['*.config.ts', '*.config.js'],
+    // Tool configs and vitest global setup are loaded by their tools via default export.
+    files: ['*.config.ts', '*.config.js', '**/test/global-setup.ts'],
     rules: {
       'no-restricted-syntax': 'off',
     },
