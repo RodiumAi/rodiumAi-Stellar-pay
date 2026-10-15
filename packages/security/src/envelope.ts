@@ -77,7 +77,9 @@ export function encryptField(
 ): Buffer {
   const { id, key } = keyring.current;
   const nonce = randomBytes(NONCE_BYTES);
-  const cipher = createCipheriv('aes-256-gcm', key, nonce).setAAD(aad(location));
+  const cipher = createCipheriv('aes-256-gcm', key, nonce, { authTagLength: TAG_BYTES }).setAAD(
+    aad(location),
+  );
   const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   return Buffer.concat([Buffer.of(VERSION), id, nonce, ct, cipher.getAuthTag()]);
 }
@@ -97,7 +99,10 @@ export function decryptField(
   }
   const nonce = buf.subarray(1 + KEY_ID_BYTES, HEADER_BYTES);
   const ct = buf.subarray(HEADER_BYTES, buf.length - TAG_BYTES);
-  const decipher = createDecipheriv('aes-256-gcm', dataKey.key, nonce).setAAD(aad(location));
+  // Pinning the tag length stops a truncated tag from being accepted.
+  const decipher = createDecipheriv('aes-256-gcm', dataKey.key, nonce, {
+    authTagLength: TAG_BYTES,
+  }).setAAD(aad(location));
   decipher.setAuthTag(buf.subarray(buf.length - TAG_BYTES));
   try {
     return ok(Buffer.concat([decipher.update(ct), decipher.final()]));
