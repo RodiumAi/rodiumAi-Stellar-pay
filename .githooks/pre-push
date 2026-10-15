@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Enabled with: git config core.hooksPath .githooks
+set -euo pipefail
+pnpm verify
