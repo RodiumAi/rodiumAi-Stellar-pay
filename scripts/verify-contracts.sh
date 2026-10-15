@@ -17,13 +17,16 @@ cd contracts
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+stellar contract build
 cargo deny check
 cargo audit
 # Scout only analyses crates that depend on soroban-sdk (added in Sprint 4).
 if ! grep -q '^soroban-sdk' subscription/Cargo.toml; then
   echo "no soroban-sdk dependency yet; skipping Scout"
 elif command -v cargo-scout-audit >/dev/null; then
-  cargo scout-audit
+  report="$(mktemp -t scout.XXXXXX).json"
+  cargo scout-audit -o json --output-path "$report" >/dev/null
+  python3 ../scripts/scout-gate.py "$report"
 else
   echo "cargo-scout-audit not installed; CI runs it" >&2
   exit 1
