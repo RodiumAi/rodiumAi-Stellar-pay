@@ -16,6 +16,7 @@
     "test:int": "vitest run --project int",
     "db:start": "supabase --workdir infra start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "supabase --workdir infra stop",
+    "db:setup": "node --disable-warning=ExperimentalWarning packages/db/scripts/setup-local.mjs",
     "test:coverage": "vitest run --project unit --coverage",
     "secrets:scan": "gitleaks git --redact --no-banner",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm audit --audit-level high && pnpm secrets:scan && ./scripts/verify-db.sh && ./scripts/verify-contracts.sh"

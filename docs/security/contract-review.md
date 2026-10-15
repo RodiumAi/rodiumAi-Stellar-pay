@@ -46,7 +46,7 @@ Every invariant in context §14.3 has a dedicated test; auth tests use `mock_aut
 
 ### Fuzzing (`cargo-fuzz`, target `charge_sequence`)
 
-Random subscribe/advance/charge/cancel/pause/reprice sequences; asserts locked price, schedule bounds, exact merchant total, and never charging beyond the allowance. CI runs 120 s per push. Before each contract tag: run ≥ 1 h and record here.
+Random subscribe/advance/charge/cancel/pause/reprice sequences; asserts locked price, schedule bounds, exact merchant total, and never charging beyond the allowance. CI runs 120 s per push (first green run: PR #6, 2026-10-15). A 1 h run executes nightly (`.github/workflows/fuzz-nightly.yml`, also manual dispatch); record the run for the deployed hash here.
 
 | Date | Duration | Result                 |
 | ---- | -------- | ---------------------- |

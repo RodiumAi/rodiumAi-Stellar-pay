@@ -59,3 +59,12 @@ cargo-fuzz built for musl; OSV flagged `paste`
 - What: "sanitizer is incompatible with statically linked libc"; OSV: RUSTSEC-2024-0436 (2 lockfiles).
 - Why: the prebuilt cargo-fuzz binary defaults to its own musl target; OSV has no knowledge of the `cargo deny` ignore.
 - Fix: `--target x86_64-unknown-linux-gnu`; `contracts/osv-scanner.toml` + `contracts/fuzz/osv-scanner.toml` ignore with the same reason as `deny.toml`.
+
+### 2026-10-15 · S4 · release · milestone
+
+Sprint 4 merged (`v0.4.0`); local `.env` completed
+
+- What: PR #6 green on all 7 jobs (incl. 120 s fuzz). User added ExchangeRate-API + Upstash keys (both verified without printing: GHS rate returned, PING → PONG). Generated role passwords, HMAC/blind-index/KMS/webhook keys and a funded testnet merchant; `.env` chmod 600.
+- `pnpm db:setup` creates `rodium_pay_dev` with the `.env` role passwords and fills `DATABASE_URL_*`; integration tests now reuse those passwords (roles are cluster-wide — random test passwords would lock the dev DB out).
+- Long fuzz: nightly 1 h workflow instead of "before each tag" (tags follow merges; nightly on `main` covers it).
+- Disk: ~10 GB free after removing the Quickstart image (re-pulled by `e2e-local.sh`).
