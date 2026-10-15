@@ -4,6 +4,11 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+  # Unmaintained (not a vulnerability) proc-macro pulled in by soroban-env-host via
+  # ark-ff; host/test-only, absent from the wasm32v1-none build. Re-check on SDK upgrades.
+  { id = "RUSTSEC-2024-0436", reason = "transitive via soroban-env-host; not in contract WASM" },
+]
 
 [licenses]
 version = 2

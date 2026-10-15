@@ -36,3 +36,8 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
+
+# cargo-fuzz
+contracts/fuzz/corpus/
+contracts/fuzz/artifacts/
+contracts/fuzz/coverage/

@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["subscription"]
+# cargo-fuzz needs nightly + libFuzzer; it is its own workspace, run in CI.
+exclude = ["fuzz"]
 
 [workspace.package]
 edition = "2024"

@@ -60,19 +60,41 @@ jobs:
       - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
         with:
           tool: cargo-deny,cargo-audit,cargo-scout-audit
+      - name: stellar-cli
+        env:
+          STELLAR_CLI_VERSION: 28.1.0
+          STELLAR_CLI_SHA256: c1680deee94301d33ada7a17f98411e642a4248c727afbd2e43050d345746462
+        run: |
+          curl -sSfL -o stellar.tgz \
+            "https://github.com/stellar/stellar-cli/releases/download/v${STELLAR_CLI_VERSION}/stellar-cli-${STELLAR_CLI_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${STELLAR_CLI_SHA256}  stellar.tgz" | sha256sum --check
+          tar -xzf stellar.tgz stellar
+          sudo install -m 755 stellar /usr/local/bin/stellar
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
-      - run: cargo build --release
+      - run: stellar contract build
+      - run: sha256sum target/wasm32v1-none/release/subscription.wasm
       - run: cargo deny check
       - run: cargo audit
-      # Scout only analyses crates that depend on soroban-sdk (added in Sprint 4).
+      # Blocks on critical/medium/minor; enhancements are explained in docs/security/contract-review.md.
       - run: |
-          if grep -q '^soroban-sdk' subscription/Cargo.toml; then
-            cargo scout-audit
-          else
-            echo "no soroban-sdk dependency yet; skipping Scout"
-          fi
+          cargo scout-audit -o json --output-path scout.json
+          python3 ../scripts/scout-gate.py scout.json
+
+  contract-fuzz:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: contracts/fuzz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install nightly-2025-09-18 --profile minimal
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-fuzz@0.13.2
+      # Short smoke run per push; the ≥ 1 h run happens before each contract tag (plan §6).
+      - run: cargo +nightly-2025-09-18 fuzz run charge_sequence -- -max_total_time=120
 
   security-scan:
     runs-on: ubuntu-24.04
