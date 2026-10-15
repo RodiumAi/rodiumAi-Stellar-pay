@@ -84,3 +84,12 @@ Contract checks run only when `contracts/` changes locally
 - What: `scripts/verify-contracts.sh` skips Rust when `contracts/` is unchanged vs `origin/main` (`FORCE_CONTRACTS=1` overrides); CI `contract` job always runs.
 - Why: keep TypeScript-only pre-push fast without weakening CI.
 - Refs: `.githooks/pre-push`, `.github/workflows/ci.yml`
+
+### 2026-10-15 · S0 · contract · surprise
+
+Scout cannot run on a crate without soroban-sdk
+
+- What: `cargo scout-audit` → "[ERROR] No supported dependency found in Cargo.toml." (supports ink, soroban, substrate-pallets).
+- Why: Scout detects the target chain from dependencies; the S0 crate is intentionally empty.
+- Fix: local gate and CI skip Scout until `subscription/Cargo.toml` lists `soroban-sdk`; mandatory from S4. Plan S0 test text corrected.
+- Verified: cargo-scout-audit 0.3.17 installed locally.

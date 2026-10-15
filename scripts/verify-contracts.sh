@@ -19,8 +19,12 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 cargo deny check
 cargo audit
-if command -v cargo-scout-audit >/dev/null; then
+# Scout only analyses crates that depend on soroban-sdk (added in Sprint 4).
+if ! grep -q '^soroban-sdk' subscription/Cargo.toml; then
+  echo "no soroban-sdk dependency yet; skipping Scout"
+elif command -v cargo-scout-audit >/dev/null; then
   cargo scout-audit
 else
   echo "cargo-scout-audit not installed; CI runs it" >&2
+  exit 1
 fi
