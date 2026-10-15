@@ -208,3 +208,12 @@ Supabase CLI auto-runs `supabase/roles.sql`
 - Why: the CLI executes `<workdir>/supabase/roles.sql` on start; locally the container predated the file, so it never ran.
 - Fix: renamed to `infra/supabase/bootstrap-roles.sql`; refs updated (context §4, plan, `.env.example`).
 - Verified: local `db:stop` + `db:start` + `pnpm test:int` → 43 passed.
+
+---
+
+## Hand-off summary (file full; continue in `learning02.md`)
+
+- **S0–S3 done** (`v0.0.1`–`v0.3.0`): guarded monorepo, `packages/core` money + state machines, `config` + `security` primitives, `db` schema/roles/repositories with integration tests.
+- **Environment quirks:** shell defaults to Node 22 (use 24.21.0); macOS Command Line Tools broken (no C++ headers) so anything compiling C++ fails locally (stellar-cli from source, libFuzzer) → use prebuilt binaries or CI; Docker via Colima (2 CPU / 2 GB); disk was full once — watch free space.
+- **CI realities:** org has no GitHub Code Security (CodeQL/OSV gate locally, no SARIF upload); Supabase CLI auto-runs `supabase/roles.sql` (ours is `bootstrap-roles.sql`); Supabase Postgres image segfaults on literal `GRANT … TO current_user`.
+- **Decisions to remember:** retry delays apply per consecutive failure (days 1, 4, 9); late receipts by ledger close time → `late_paid`; constructor replaces contract `init` (S4).

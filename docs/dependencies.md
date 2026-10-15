@@ -66,3 +66,15 @@ TypeScript 7 (native) exists, but §3 specifies 5.x and typescript-eslint 8.71 s
 | USDC issuer, mainnet | `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN` | same                                                                   |
 | USDC SAC, testnet    | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` | `stellar contract id asset --asset USDC:<issuer> --network testnet`    |
 | USDC SAC, mainnet    | `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75` | same, `--network mainnet`                                              |
+
+## Contract (Rust, Sprint 4)
+
+| Crate / tool            | Pinned | Published  | Note                            |
+| ----------------------- | ------ | ---------- | ------------------------------- |
+| soroban-sdk             | 28.0.0 | 2026-09-18 | 29.0.0/29.0.1 are < 14 days old |
+| proptest (dev)          | 1.11.0 | 2026-03-24 | 1.12.0 is < 14 days old         |
+| libfuzzer-sys (fuzz)    | 0.4.13 | 2026-06-04 |                                 |
+| arbitrary (fuzz)        | 1.3.2  | —          | soroban-sdk 28 requires `~1.3`  |
+| cargo-fuzz (CI)         | 0.13.2 | 2026-06-09 | nightly-2025-09-18              |
+| cargo-scout-audit       | 0.3.17 | —          | detectors on nightly-2025-09-18 |
+| stellar-cli (CI, linux) | 28.1.0 | 2026-09-26 | sha256 `c1680dee…6462`          |

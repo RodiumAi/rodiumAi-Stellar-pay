@@ -2,7 +2,7 @@
 
 Source of truth: `docs/context.md` (formerly `soroban-context.md`). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
 
-Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 1 in progress.**
+Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 4 in progress.**
 
 ---
 
@@ -250,7 +250,7 @@ Scope:
 - `cargo audit`, `cargo deny check` in CI.
 - Keep the contract minimal: no function or storage that §14.1 does not require (smaller code = smaller attack surface, since there is no paid audit).
 - **Scout** (CoinFabrik, MIT): `cargo scout-audit` in CI; zero high/critical findings to merge; every medium/low either fixed or justified in `docs/security/contract-review.md`.
-- **Komet** (Runtime Verification): property tests for every §14.3 invariant, run with fuzzing in CI and symbolic proof (`komet prove`) on the invariants that support it.
+- **Komet** (Runtime Verification): deferred to S10 — installation needs Nix via `kup`, not available on the dev machine; runs in CI there.
 - **`cargo-fuzz` / `proptest`**: fuzz `subscribe`, `charge`, `cancel` sequences with random timestamps, prices and periods; CI smoke run (short), long run (≥ 1 h) before each tag.
 - Start `docs/security/contract-review.md`: tool versions, findings, fixes, accepted risks, and a manual review against the Soroban security checklist (auth on every entrypoint, checked arithmetic, TTL/archival, upgrade path, event completeness).
 
@@ -264,7 +264,7 @@ Tests before push (Soroban test env, `mock_auths` with exact invocations — nev
 - Auth: only keeper charges; only subscriber/admin cancels; only admin manages plans/pause/keeper/upgrade.
 - Late charge advances to `now + interval` (no back-charging); at most one period per call.
 - Deploy + subscribe + charge works on local Quickstart.
-- Scout: zero high/critical. Komet: all invariant properties pass. Fuzz: no panics other than the expected overflow/auth aborts.
+- Scout: zero critical/medium/minor (`scripts/scout-gate.py`). Fuzz: no panics other than the expected overflow/auth aborts.
 
 Exit: tag `v0.4.0`. Learning-log entry recording tool versions and findings; note that free tooling is not a substitute for a professional audit and mainnet runs with the exposure caps in plan §6.
 
@@ -420,6 +420,7 @@ Scope:
 - Backup: PITR on, weekly `age`-encrypted `pg_dump`, first restore drill recorded.
 - All §20 runbooks written.
 - `infra/upstash/` checklist (§8.1).
+- **Komet** property proofs of the §14.3 invariants in CI (moved from S4).
 - Optional: **Certora Sunbeam** formal verification of the compiled WASM for the highest-value invariants (recipient fixed, no double charge).
 - Contract security review pass 2 (plan §6): re-run all tools on the final contract, long fuzz run, update `docs/security/contract-review.md`.
 
@@ -461,10 +462,10 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contra
 | Sprint               | Branch                      | Status       | Tag      |
 | -------------------- | --------------------------- | ------------ | -------- |
 | S0 Foundation        | `sprint/00-foundation`      | done (PR #1) | `v0.0.1` |
-| S1 Core              | `sprint/01-core-domain`     | in progress  | —        |
-| S2 Config + security | `sprint/02-config-security` | not started  | —        |
-| S3 DB                | `sprint/03-db`              | not started  | —        |
-| S4 Contract          | `sprint/04-contract`        | not started  | —        |
+| S1 Core              | `sprint/01-core-domain`     | done (PR #3) | `v0.1.0` |
+| S2 Config + security | `sprint/02-config-security` | done (PR #4) | `v0.2.0` |
+| S3 DB                | `sprint/03-db`              | done (PR #5) | `v0.3.0` |
+| S4 Contract          | `sprint/04-contract`        | in progress  | —        |
 | S5 Stellar           | `sprint/05-stellar`         | not started  | —        |
 | S6 API               | `sprint/06-api`             | not started  | —        |
 | S7 Worker            | `sprint/07-worker-payments` | not started  | —        |
