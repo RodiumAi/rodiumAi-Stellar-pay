@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/config" },
+    { "path": "packages/security" },
+    { "path": "packages/db" },
+    { "path": "packages/stellar" },
+    { "path": "apps/api" },
+    { "path": "apps/worker" },
+    { "path": "apps/signer" },
+    { "path": "apps/checkout" }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "name": "rodiumai-stellar-pay",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": "24.21.0",
+    "pnpm": "10.34.6"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --build && tsc -p tsconfig.tools.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "secrets:scan": "gitleaks git --redact --no-banner",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm audit --audit-level high && pnpm secrets:scan && ./scripts/verify-contracts.sh"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "@vitest/coverage-v8": "5.0.3",
+    "eslint": "10.11.0",
+    "eslint-plugin-security": "4.2.0",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "5.0.3"
+  }
+}
