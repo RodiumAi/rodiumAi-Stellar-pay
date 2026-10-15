@@ -1,0 +1,31 @@
+name: fuzz-nightly
+
+# Long contract fuzz run (plan §6: ≥ 1 h before contract releases). Results feed
+# docs/security/contract-review.md.
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  charge-sequence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: contracts/fuzz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install nightly-2025-09-18 --profile minimal
+      - uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        with:
+          tool: cargo-fuzz@0.13.2
+      - run: cargo +nightly-2025-09-18 fuzz run charge_sequence --target x86_64-unknown-linux-gnu -- -max_total_time=3600
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-artifacts
+          path: contracts/fuzz/artifacts

@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -12,6 +13,7 @@ const rolesSql = fileURLToPath(
   new URL('../../../infra/supabase/bootstrap-roles.sql', import.meta.url),
 );
 const migrationsDir = fileURLToPath(new URL('../migrations', import.meta.url));
+const envFile = fileURLToPath(new URL('../../../.env', import.meta.url));
 
 function urlFor(base: string, user: string, password: string, database: string): string {
   const url = new URL(base);
@@ -19,6 +21,26 @@ function urlFor(base: string, user: string, password: string, database: string):
   url.password = password;
   url.pathname = `/${database}`;
   return url.toString();
+}
+
+/**
+ * Roles are cluster-wide, so tests must not rotate the passwords a local dev database
+ * (`pnpm db:setup`) relies on: reuse RP_*_PASSWORD from .env when present, else random (CI).
+ */
+function rolePasswords(): RolePasswords {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- repo-relative path
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  const env = new Map(Object.entries(process.env));
+  const pick = (name: string): string => {
+    const value = env.get(name);
+    return value !== undefined && value.length >= 32 ? value : randomBytes(32).toString('hex');
+  };
+  return {
+    owner: pick('RP_OWNER_PASSWORD'),
+    api: pick('RP_API_PASSWORD'),
+    worker: pick('RP_WORKER_PASSWORD'),
+    readonly: pick('RP_READONLY_PASSWORD'),
+  };
 }
 
 declare module 'vitest' {
@@ -30,12 +52,7 @@ declare module 'vitest' {
 /** Creates a throwaway database, bootstraps roles, applies migrations; drops it afterwards. */
 export default async function setup(project: TestProject): Promise<() => Promise<void>> {
   const database = `rp_test_${randomBytes(6).toString('hex')}`;
-  const passwords: RolePasswords = {
-    owner: randomBytes(32).toString('hex'),
-    api: randomBytes(32).toString('hex'),
-    worker: randomBytes(32).toString('hex'),
-    readonly: randomBytes(32).toString('hex'),
-  };
+  const passwords = rolePasswords();
 
   const server = new pg.Client({ connectionString: ADMIN_URL });
   try {
