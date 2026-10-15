@@ -2,7 +2,7 @@
 
 Source of truth: `soroban-context.md` (moves to `docs/context.md` in Sprint 0). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
 
-Status: **GitHub practice (§1) adopted 2026-10-15. Sprint plan awaiting answers to §5 before Sprint 0 starts.**
+Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 0 in progress.**
 
 ---
 
@@ -11,7 +11,7 @@ Status: **GitHub practice (§1) adopted 2026-10-15. Sprint plan awaiting answers
 - The build is **layered, not feature-sliced**: each sprint completes one layer (core → security/config → db → contract → stellar → api → worker → checkout → subscriptions → hardening → release). Later sprints depend on earlier ones.
 - Every sprint ends with: **all tests green locally → pre-push gate → PR → CI green → merge → tag**. Nothing is pushed to `main` untested.
 - What happened, what went wrong and why goes in the **rolling learning log**: `dev_docs/learning01.md`, then `learning02.md`, `learning03.md`, … Each file is capped at 200 lines and is chronological across all sprints, not one file per sprint. Entries are tagged `S<n>` so a stage can be grepped.
-- Section references like §7.3 point to `soroban-context.md`.
+- Section references like §7.3 point to `soroban-context.md`. References written **plan §N** point to this file.
 
 ### Dependency graph
 
@@ -23,7 +23,7 @@ S0 foundation
                                                                     └──────────── S9 subscriptions ──────┘
 ```
 
-S4 (Rust contract) has no TypeScript dependency and can run in parallel with S2/S3 if a second person is available.
+S4 (Rust contract) has no TypeScript dependency, but with a solo developer the sprints run **strictly in order** S0 → S11.
 
 ---
 
@@ -63,19 +63,22 @@ Rules:
 - Open a **draft PR early** in the sprint so CI runs on every push.
 - PR template (added in S0) contains the §21 Definition-of-Done checklist plus: "Learning log updated?" and "§17 facts verified (with sources)?".
 - Merge strategy: **squash-merge for small task PRs, rebase-merge for sprint PRs** with clean conventional commits. Either way, `main` stays linear.
-- Required to merge: CI green, 1 approving review (self-review checklist if solo), conversations resolved, branch up to date.
+- Required to merge: CI green, conversations resolved, branch up to date. **Solo developer:** GitHub does not allow approving your own PR, so no approval count is required; instead the PR template's self-review checklist must be ticked before merge.
 
-### 1.5 Branch protection on `main` (set in S0)
+### 1.5 Branch protection on `main` (managed by the GitHub organisation — out of scope for this plan)
+
+The repo lives in the RodiumAI GitHub org, whose admins own branch-protection settings. The rules below are the recommended target to hand to them; this plan does not configure them.
+
 
 - Require PR, require status checks (`verify`, `contract`, `security-scan`), require linear history, require up-to-date branch.
 - Block force-push and deletion.
 - Require signed commits (recommended).
-- CODEOWNERS on `contracts/`, `packages/security/`, `apps/signer/`, `infra/` — these need a second reviewer once the team has one.
+- CODEOWNERS on `contracts/`, `packages/security/`, `apps/signer/`, `infra/` — documentation only while solo; switch on "require review from Code Owners" once a second engineer joins.
 
 ### 1.6 Tags and releases
 
 - After each sprint merges: annotated tag `v0.<sprint>.0` (e.g. `v0.3.0` after Sprint 3) with a short release note listing what landed.
-- Release candidate for testnet: `v1.0.0-rc.N`. Mainnet: `v1.0.0`, only after the external contract audit (§14.4).
+- Release candidate for testnet: `v1.0.0-rc.N`. Mainnet: `v1.0.0`, only after the free-tooling contract security review passes (plan §6, §14.4).
 - Tags give a known-good rollback point per layer.
 
 ### 1.7 Protecting the deployed main app
@@ -107,7 +110,7 @@ The hook uses `git config core.hooksPath .githooks` — no extra npm dependency 
 
 ### 2.2 CI gate (GitHub Actions, pinned by commit SHA, minimal `permissions`)
 
-Same as local plus: `pnpm install --frozen-lockfile`, coverage gate (90% on `core` and `security`), `osv-scanner`, Semgrep, CodeQL, `cargo audit`, `cargo deny check`, and from S10 onward Trivy + SBOM. Integration jobs (Supabase local, Redis + `serverless-redis-http`, Stellar Quickstart) are added as their sprints introduce them.
+Same as local plus: `pnpm install --frozen-lockfile`, coverage gate (90% on `core` and `security`), `osv-scanner`, Semgrep, CodeQL, `cargo audit`, `cargo deny check`, and from S4 onward the contract security tools (Scout static analysis, Komet property tests/proofs, `cargo-fuzz` smoke run — plan §6), and from S10 onward Trivy + SBOM. Integration jobs (Supabase local, Redis + `serverless-redis-http`, Stellar Quickstart) are added as their sprints introduce them.
 
 ### 2.3 Sprint push checklist
 
@@ -122,7 +125,7 @@ Same as local plus: `pnpm install --frozen-lockfile`, coverage gate (90% on `cor
 
 ## 3. Sprints
 
-Suggested cadence: **1 week per sprint** for S0–S2, **2 weeks** for the heavier ones (marked). Adjust after reviewing S1's actual pace in the learning log.
+**No calendar cadence.** Solo developer, continuous working session: a sprint ends when its exit criteria pass and its tag is pushed, then the next one starts. The "(N weeks)" labels below are relative size estimates only, not deadlines. Actual pace is recorded in the learning log.
 
 ---
 
@@ -137,17 +140,19 @@ Scope:
 - Root `tsconfig.base.json` with the §5 flags; per-package project references.
 - ESLint (typescript-eslint strict-type-checked, `eslint-plugin-security`), rules banning `any`, default exports, `Math.random`, `rejectUnauthorized: false`; Prettier.
 - Rust toolchain file + empty `contracts/subscription` crate with the §14.4 release profile.
+- `deny.toml` for `cargo deny`; install Scout (`cargo install cargo-scout-audit`) and wire it into the `contract` CI job (runs on the empty crate; real findings start in S4).
 - `.gitignore` extended for Node (`node_modules`, `dist`, `coverage`, `.env*`).
 - `.githooks/pre-push` running `pnpm verify`.
-- GitHub: Actions workflow (`verify`, `contract`, `security-scan`), PR template, CODEOWNERS, Renovate config, branch protection.
+- GitHub: Actions workflow (`verify`, `contract`, `security-scan`), PR template (with solo self-review checklist), CODEOWNERS, Renovate config. (Branch protection is org-managed — not done here.)
 - Verify §17: latest stable versions of every §3 dependency (≥14 days old); record sources.
 
 Tests before push:
 - `pnpm verify` passes on the skeleton.
 - A deliberately bad commit on a throwaway branch (uses `any`, default export, `Math.random`) **fails** lint in CI — proves the guardrails work. Delete the branch after.
 - `cargo build --release` and `cargo clippy -D warnings` pass on the empty crate.
+- `cargo scout-audit` runs in CI and reports zero findings on the empty crate.
 
-Exit: CI green, branch protection on, tag `v0.0.1`.
+Exit: CI green, tag `v0.0.1`.
 
 ---
 
@@ -183,7 +188,7 @@ Scope:
 - `config`: Zod-validated config loaded once at boot; testnet/mainnet `NetworkConfig` files (§13.5); fail fast on invalid config.
 - HMAC request signing + verification: canonical string, ±300s skew, nonce check interface, two active key IDs, `timingSafeEqual` (§9.1).
 - Ed25519 webhook signing: `t=…,k=…,s=…` header over `"{t}.{raw_body}"`; reference verifier for the main app (§10.3).
-- Envelope encryption: AES-256-GCM, stored format `version||key_id||nonce||ct||tag`, AAD `"{table}.{column}.{row_id}"`, `Kms` interface with a local dev implementation (real KMS adapter chosen in S10) (§12.2).
+- Envelope encryption: AES-256-GCM, stored format `version||key_id||nonce||ct||tag`, AAD `"{table}.{column}.{row_id}"`, `Kms` interface with a local dev implementation (AWS KMS adapter added in S10) (§12.2).
 - Blind index: HMAC-SHA256 with separate key (§12.2).
 - Checkout tokens: 32 random bytes base64url, SHA-256 hash storage (§11.2).
 - Central pino logger with redact paths (§5 Errors and logging).
@@ -224,9 +229,9 @@ Exit: tag `v0.3.0`.
 
 ---
 
-### Sprint 4 — Soroban subscription contract (2 weeks, parallelizable)
+### Sprint 4 — Soroban subscription contract + free security tooling (2 weeks)
 
-**Goal:** contract from §14 with every invariant in §14.3 proven by tests.
+**Goal:** contract from §14 with every invariant in §14.3 proven by unit tests, property tests, fuzzing and static analysis (plan §6 replaces the paid external audit).
 
 Scope:
 - Verify §17: latest `soroban-sdk`, `stellar-cli`; Circle USDC SAC contract ID on testnet; max entry TTL.
@@ -234,6 +239,11 @@ Scope:
 - Checked arithmetic, events on every state change.
 - Deploy script for testnet (local Quickstart first).
 - `cargo audit`, `cargo deny check` in CI.
+- Keep the contract minimal: no function or storage that §14.1 does not require (smaller code = smaller attack surface, since there is no paid audit).
+- **Scout** (CoinFabrik, MIT): `cargo scout-audit` in CI; zero high/critical findings to merge; every medium/low either fixed or justified in `docs/security/contract-review.md`.
+- **Komet** (Runtime Verification): property tests for every §14.3 invariant, run with fuzzing in CI and symbolic proof (`komet prove`) on the invariants that support it.
+- **`cargo-fuzz` / `proptest`**: fuzz `subscribe`, `charge`, `cancel` sequences with random timestamps, prices and periods; CI smoke run (short), long run (≥ 1 h) before each tag.
+- Start `docs/security/contract-review.md`: tool versions, findings, fixes, accepted risks, and a manual review against the Soroban security checklist (auth on every entrypoint, checked arithmetic, TTL/archival, upgrade path, event completeness).
 
 Tests before push (Soroban test env, `mock_auths` with exact invocations — never `mock_all_auths` for security tests):
 - Recipient is always the init-time merchant.
@@ -244,8 +254,9 @@ Tests before push (Soroban test env, `mock_auths` with exact invocations — nev
 - Auth: only keeper charges; only subscriber/admin cancels; only admin manages plans/pause/keeper/upgrade.
 - Late charge advances to `now + interval` (no back-charging); at most one period per call.
 - Deploy + subscribe + charge works on local Quickstart.
+- Scout: zero high/critical. Komet: all invariant properties pass. Fuzz: no panics other than the expected overflow/auth aborts.
 
-Exit: tag `v0.4.0`. Add a learning-log entry noting the external audit is still required before mainnet.
+Exit: tag `v0.4.0`. Learning-log entry recording tool versions and findings; note that free tooling is not a substitute for a professional audit and mainnet runs with the exposure caps in plan §6.
 
 ---
 
@@ -281,7 +292,11 @@ Scope:
 - `@upstash/ratelimit` per key and per IP, in-process backstop (fail open).
 - Idempotency: Redis fast path + Postgres unique constraint as truth.
 - Endpoints: `POST/GET /v1/payments`, `POST/GET /v1/subscriptions`, `POST /v1/subscriptions/{id}/cancel`, `/v1/health/ready`, `/health/live`.
-- Quote: USD rate = 1; FX provider adapter interface (stub provider until one is chosen).
+- Quote: USD rate = 1. Non-USD via `FxProvider` interface with **ExchangeRate-API** implementation (`GET https://v6.exchangerate-api.com/v6/{key}/latest/USD`, key in secret store).
+  - Cache the rate table in Upstash for its provider update period (24 h on Free, 60 min on Pro) — one provider call per period, not per quote.
+  - Reject if the provider's `time_last_update_unix` is older than the configured max age (fail closed for non-USD; USD keeps working).
+  - Rate stored on the payment (`fx_rate`) as today. Supported fiat list is config (start: `USD`, `GHS`).
+- Exposure caps (plan §6): config `MAX_PAYMENT_USDC`, `MAX_SUBSCRIPTION_PRICE_USDC`, `SUBSCRIPTION_APPROVE_PERIODS` (small, e.g. 3); API rejects requests above the caps.
 - `return_url` origin allowlist; `customer_ref` encrypted + blind-indexed, never returned.
 - Upstash wrapper that refuses writes without TTL (§8.1).
 
@@ -290,6 +305,8 @@ Tests before push:
 - Security: replay, skew, bad signature, unknown key, Upstash down → API rejects (fail closed); rate-limit store down → in-process limit still applies.
 - Idempotency: same key/same body → same response; same key/different body → 409.
 - `return_url` with wrong scheme/host/port rejected.
+- FX: cached rate used within its period (provider called once); stale rate → non-USD quote rejected, USD still works; provider down → same; GHS amount converts and rounds **up**.
+- Amounts above the exposure caps rejected.
 - Response never contains `customer_ref`; logs never contain it.
 - Integration with local Supabase + Redis via `serverless-redis-http`.
 
@@ -375,13 +392,15 @@ Exit: tag `v0.9.0`.
 Scope:
 - Dockerfiles: distroless/Chainguard, non-root, read-only FS, no shell; weekly rebuild.
 - k8s manifests: pod security, default-deny network policies with explicit egress allowlists (§16.3); signer only reachable from worker.
-- Real KMS adapter (cloud KMS or Vault Transit) replacing dev KMS; secret store wiring; `docs/runbooks/rotation.md`.
+- AWS KMS adapter replacing dev KMS; AWS Secrets Manager wiring; `docs/runbooks/rotation.md`. (AWS infrastructure is owned by the teammate handling hosting — this repo provides the adapter, manifests and checklists.)
 - mTLS (private CA, 30-day rotation); TLS 1.3 + `X25519MLKEM768` on terminator where supported.
 - OpenTelemetry traces + all §18 metrics and alerts.
 - Supply chain: Trivy, CycloneDX SBOM, SLSA provenance, cosign-signed images, admission policy.
 - Backup: PITR on, weekly `age`-encrypted `pg_dump`, first restore drill recorded.
 - All §20 runbooks written.
 - `infra/upstash/` checklist (§8.1).
+- Optional: **Certora Sunbeam** formal verification of the compiled WASM for the highest-value invariants (recipient fixed, no double charge).
+- Contract security review pass 2 (plan §6): re-run all tools on the final contract, long fuzz run, update `docs/security/contract-review.md`.
 
 Tests before push:
 - Trivy: zero high/critical in images and IaC.
@@ -390,26 +409,26 @@ Tests before push:
 - Restore drill succeeds into scratch Supabase project.
 - Alerts fire in staging for: ingest lag, unmatched receipt, signer rejection, dead webhook, keeper balance low.
 
-Exit: tag `v0.10.0`, staging environment live on testnet.
+Exit: tag `v0.10.0`, staging environment live on testnet (on AWS, once the teammate's platform is ready).
 
 ---
 
 ### Sprint 11 — Main-app integration & release candidate (2 weeks)
 
-**Goal:** RodiumAI app can offer crypto, dark-launched, with mainnet gated on audit.
+**Goal:** RodiumAI app can offer crypto, dark-launched, with mainnet gated on the plan §6 contract security review.
 
 Scope (two repos):
-- **Main app repo** (deployed project — follow its own branch/PR rules): crypto provider adapter next to MoMo, webhook verifier with dedup on `id`, grant access only on confirmed/activated/renewed events, fallback polling, feature flag **default off**, hide option when health fails (§10.4).
+- **Main app repo** (deployed project — follow its own branch/PR rules; adapter written by the same solo developer): crypto provider adapter next to MoMo, webhook verifier with dedup on `id`, grant access only on confirmed/activated/renewed events, fallback polling, feature flag **default off**, hide option when health fails (§10.4).
 - **This repo:** testnet E2E release script (§19), load sanity test, `v1.0.0-rc.1`.
 - Verify §17: legal/regulatory requirements per jurisdiction; mainnet USDC issuer/SAC ID; Upstash plan/pricing.
-- Commission external contract audit; fix findings; re-tag RC.
+- Final contract security sign-off per plan §6 (all tools clean on the exact WASM hash being deployed); optional: open a public bug bounty; optional: apply to the Stellar Community Fund to unlock a funded Audit Bank audit later.
 
 Tests before push:
 - Main-app adapter: signature verify on raw body, stale timestamp rejected, duplicate event ignored, access not granted on redirect alone.
 - Full testnet E2E script passes from the main app's staging environment.
 - With flag off, main app behaves exactly as before (MoMo regression tests green).
 
-Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: audit sign-off, legal sign-off, runbooks reviewed, admin multisig + merchant multisig configured, gradual rollout plan approved.
+Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contract security sign-off, exposure caps configured, legal sign-off, runbooks reviewed, admin multisig + merchant multisig configured, gradual rollout plan approved.
 
 ---
 
@@ -417,7 +436,7 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: audit sign-off,
 
 | Sprint | Branch | Status | Tag |
 |---|---|---|---|
-| S0 Foundation | `sprint/00-foundation` | not started | — |
+| S0 Foundation | `sprint/00-foundation` | in progress | — |
 | S1 Core | `sprint/01-core-domain` | not started | — |
 | S2 Config + security | `sprint/02-config-security` | not started | — |
 | S3 DB | `sprint/03-db` | not started | — |
@@ -432,13 +451,52 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: audit sign-off,
 
 ---
 
-## 5. Open questions to resolve before Sprint 0
+## 5. Decisions (answered 2026-10-15)
 
-1. **Team size** — solo or multiple engineers? (Decides whether S4 runs in parallel and whether CODEOWNERS second-review is enforceable.)
-2. **Sprint length** — 1/2-week split above OK?
-3. **Accounts** — Supabase org (dev/staging/prod projects, Pro + PITR), Upstash, GitHub org settings access for branch protection?
-4. **Hosting** — which cloud / Kubernetes platform, and which KMS (cloud KMS vs Vault Transit)?
-5. **FX provider** — needed for non-USD pricing; USD-only at launch is simplest.
-6. **Main app** — repo access and who owns the adapter PR there?
-7. **Audit** — budget and preferred auditor for the Soroban contract (book early; lead times are long).
-8. **Repo name** — context file calls it `rodium-crypto-pay`; this repo is `rodiumAi-Stellar-pay`. Keep current name?
+| # | Question | Decision |
+|---|---|---|
+| 1 | Team size | **Solo developer.** Sprints run sequentially; S4 not parallel. No required PR approvals (self-review checklist instead); CODEOWNERS is documentation until a second engineer joins. |
+| 2 | Sprint length | **No calendar.** Continuous session; a sprint ends at its exit tag. Size labels are estimates only. |
+| 3 | Accounts | **Provided when reached.** Supabase credentials at S3, Upstash at S6; until then local Supabase and local Redis + `serverless-redis-http` are used. GitHub is org-managed; branch protection is out of scope. |
+| 4 | Hosting / KMS | **AWS**, set up later by a teammate. KMS = **AWS KMS**, secrets = **AWS Secrets Manager**. Until S10 the local dev KMS is used. |
+| 5 | FX provider | **ExchangeRate-API** (exchangerate-api.com). Start on Free (1,500 req/month, daily updates); move to Pro ($10/mo, hourly) before meaningful non-USD volume. GHS verified available 2026-10-15. USD needs no provider (rate = 1). |
+| 6 | Main app | The deployed RodiumAI product (currently MoMo). Only touched in S11 by a small, flag-gated adapter; the solo developer writes that PR in the main app repo. Nothing needed before S11. |
+| 7 | Audit | **No paid external audit.** Replaced by free/open-source tooling and process (plan §6). Accepted risk, mitigated by exposure caps. |
+| 8 | Repo name | **`rodiumAi-Stellar-pay`** (context file updated). |
+
+---
+
+## 6. Contract security without a paid audit
+
+Free tools do not equal a professional audit. They catch known bug classes and prove the invariants we write down; they do not find design flaws nobody thought to test. The plan therefore combines tooling with exposure limits.
+
+### 6.1 Tooling (all free / open source)
+
+| Tool | Purpose | When |
+|---|---|---|
+| `cargo clippy -D warnings`, `cargo audit`, `cargo deny` | Lint, dependency CVEs, licences | Every push (S0+) |
+| **Scout** (CoinFabrik, MIT) | Soroban-specific static analysis | Every push touching `contracts/` (S0+) |
+| Soroban test env, `mock_auths` exact | Unit + auth tests per §14.3 | Every push (S4+) |
+| **Komet** (Runtime Verification) | Property-based fuzzing + symbolic proofs of invariants | CI on `contracts/` changes (S4+) |
+| `cargo-fuzz` / `proptest` | Random call-sequence fuzzing | Short run in CI, ≥ 1 h before each contract tag |
+| **Certora Sunbeam** (optional) | Formal verification of compiled WASM | S10 |
+
+Scout's last upstream release is over a year old (checked 2026-10-15) — record the version used and treat it as one signal among several.
+
+### 6.2 Process
+
+- `docs/security/contract-review.md` is the audit report we write ourselves: tool versions, every finding and its fix or justification, manual checklist results, and the deployed WASM hash.
+- Sign-off for mainnet requires: Scout zero high/critical, all Komet properties pass, long fuzz run clean, manual checklist complete — all against the **exact WASM hash** to be deployed.
+- Any contract change after sign-off restarts the review.
+
+### 6.3 Exposure caps (limit damage if a bug slips through)
+
+- Small allowance: `SUBSCRIPTION_APPROVE_PERIODS` (e.g. 3) instead of a long approval.
+- Per-payment and per-subscription price caps enforced by the API.
+- Gradual rollout (plan §1.7): internal users → small % → full; caps raised only after a clean period.
+- Monitoring + kill switch: `set_paused` on the contract and feature flag off (§20 runbooks).
+
+### 6.4 Later, if money allows
+
+- Public bug bounty (pay only for real findings).
+- Apply to the Stellar Community Fund; funded projects qualify for the Soroban Audit Bank (SDF pays the first audit, 5% refundable co-pay).

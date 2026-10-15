@@ -35,3 +35,12 @@ Build plan drafted; GitHub practice adopted
 - Why: Sprints are layers, not features; main RodiumAI app is already deployed, so this service must stay isolated and reach the main app only behind a feature flag (S11).
 - Fix: Learning logs changed from per-sprint files to this rolling 200-line format.
 - Refs: `dev_docs/BUILD_PLAN.md` §1
+
+### 2026-10-15 · S0 · devdocs · decision
+Open questions answered; paid audit replaced by free tooling
+- What: Solo developer, no calendar sprints; AWS hosting (teammate, later) → AWS KMS + Secrets Manager; FX = ExchangeRate-API; repo name stays `rodiumAi-Stellar-pay`; accounts still open.
+- Why: No budget for an external Soroban audit; one developer working continuously.
+- Fix: BUILD_PLAN §5 rewritten as decisions, new plan §6 (Scout, Komet, cargo-fuzz, optional Sunbeam, self-written `docs/security/contract-review.md`, exposure caps). Context §4, §6 Quote, §12, §14.4, §17 updated to match.
+- Verified: `open.er-api.com/v6/latest/USD` returned GHS 11.686603 (2026-10-15). Tool sources: developers.stellar.org/docs/tools/developer-tools/security-tools
+- Prevent: mainnet gated on plan §6 sign-off against the exact WASM hash.
+- Refs: `dev_docs/BUILD_PLAN.md` §5–§6
