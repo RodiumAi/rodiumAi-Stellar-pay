@@ -804,16 +804,21 @@ Testnet and mainnet configs live in separate files. The service refuses to start
 ### 14.1 Interface
 
 ```rust
-pub fn init(env: Env, admin: Address, token: Address, merchant: Address, keeper: Address);
-pub fn set_plan(env: Env, plan_id: u32, price: i128, interval_secs: u64, active: bool);
-pub fn subscribe(env: Env, subscriber: Address, plan_id: u32, periods: u32, live_until_ledger: u32) -> u64;
+pub fn __constructor(env: Env, admin: Address, token: Address, merchant: Address, keeper: Address);
+pub fn set_plan(env: Env, plan_id: u32, price: i128, interval_secs: u64, active: bool) -> Result<(), Error>;
+pub fn subscribe(env: Env, subscriber: Address, plan_id: u32, periods: u32, live_until_ledger: u32) -> Result<u64, Error>;
 pub fn charge(env: Env, sub_id: u64) -> Result<ChargeOutcome, Error>;
-pub fn cancel(env: Env, caller: Address, sub_id: u64);
+pub fn cancel(env: Env, caller: Address, sub_id: u64) -> Result<(), Error>;
 pub fn set_paused(env: Env, paused: bool);
 pub fn set_keeper(env: Env, keeper: Address);
 pub fn upgrade(env: Env, wasm_hash: BytesN<32>);
-pub fn get(env: Env, sub_id: u64) -> Subscription;
+pub fn get(env: Env, sub_id: u64) -> Result<Subscription, Error>;
+pub fn plan(env: Env, plan_id: u32) -> Result<Plan, Error>;
+pub fn merchant(env: Env) -> Address;
+pub fn is_paused(env: Env) -> bool;
 ```
+
+Changed 2026-10-15 (S4), with reason: a separate `init` could be front-run between deployment and initialisation, letting anyone make themselves admin. The constructor runs atomically with deployment. Fallible functions return typed errors instead of panicking.
 
 ### 14.2 Behaviour
 
