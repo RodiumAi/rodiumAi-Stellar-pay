@@ -50,7 +50,13 @@ jobs:
       - run: cargo build --release
       - run: cargo deny check
       - run: cargo audit
-      - run: cargo scout-audit
+      # Scout only analyses crates that depend on soroban-sdk (added in Sprint 4).
+      - run: |
+          if grep -q '^soroban-sdk' subscription/Cargo.toml; then
+            cargo scout-audit
+          else
+            echo "no soroban-sdk dependency yet; skipping Scout"
+          fi
 
   security-scan:
     runs-on: ubuntu-24.04

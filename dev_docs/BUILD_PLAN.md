@@ -141,7 +141,7 @@ Scope:
 - Root `tsconfig.base.json` with the §5 flags; per-package project references.
 - ESLint (typescript-eslint strict-type-checked, `eslint-plugin-security`), rules banning `any`, default exports, `Math.random`, `rejectUnauthorized: false`; Prettier.
 - Rust toolchain file + empty `contracts/subscription` crate with the §14.4 release profile.
-- `deny.toml` for `cargo deny`; install Scout (`cargo install cargo-scout-audit`) and wire it into the `contract` CI job (runs on the empty crate; real findings start in S4).
+- `deny.toml` for `cargo deny`; install Scout (`cargo install cargo-scout-audit`) and wire it into the `contract` CI job (skipped until S4 adds `soroban-sdk`).
 - `.gitignore` extended for Node (`node_modules`, `dist`, `coverage`, `.env*`).
 - `.githooks/pre-push` running `pnpm verify`.
 - GitHub: Actions workflow (`verify`, `contract`, `security-scan`), PR template (with solo self-review checklist), CODEOWNERS, Renovate config. (Branch protection is org-managed — not done here.)
@@ -152,7 +152,7 @@ Tests before push:
 - `pnpm verify` passes on the skeleton.
 - A deliberately bad commit on a throwaway branch (uses `any`, default export, `Math.random`) **fails** lint in CI — proves the guardrails work. Delete the branch after.
 - `cargo build --release` and `cargo clippy -D warnings` pass on the empty crate.
-- `cargo scout-audit` runs in CI and reports zero findings on the empty crate.
+- Scout is wired into CI and the local gate but skips until `soroban-sdk` is a dependency (Scout refuses crates without a supported blockchain dependency); it becomes blocking in S4.
 
 Exit: CI green, tag `v0.0.1`.
 
