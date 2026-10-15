@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Supply-chain rules (context §16.2).
+# 20160 minutes = 14 days: freshly published versions cannot be installed.
+minimumReleaseAge: 20160
+strictPeerDependencies: true
+# Lifecycle scripts are blocked unless the package is listed here.
+onlyBuiltDependencies: []
