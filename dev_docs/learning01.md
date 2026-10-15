@@ -161,3 +161,12 @@ Money, IDs and state machines in `packages/core`
 - Decision: decimal parsing is hand-written (`money/decimal.ts`) because `eslint-plugin-security` flags the equivalent regexes as unsafe.
 - Verified: 149 tests (fast-check: round-trip, never rounds down, accumulation keeps every stroop); core lines 97%.
 - Prevent: lint bans `Number`, `parseFloat`, `parseInt`, `.toFixed` and float literals in `packages/core/src/money`.
+
+### 2026-10-15 · S2 · security · decision
+
+Config and security primitives
+
+- What: `@rp/config` (Zod env → `AppConfig`, testnet/mainnet constants, exposure caps, FX settings); `@rp/security` (HMAC §9.1, Ed25519 webhooks §10.3, AES-256-GCM envelope §12.2 with `Kms` + local dev KMS, blind index, checkout tokens, pino redaction).
+- Why: HMAC verify claims the nonce only after the signature passes, so unauthenticated traffic cannot fill the nonce store; nonce-store errors propagate (fail closed). Config errors list variable names only, never values.
+- Fact: USDC issuers verified on Circle's docs; SAC IDs derived with `stellar contract id asset` (see `docs/dependencies.md`). SDF has no public mainnet RPC → `STELLAR_RPC_URL` required on mainnet.
+- Verified: 221 tests; security 100% lines, config 96%.

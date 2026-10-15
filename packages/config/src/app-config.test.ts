@@ -1,0 +1,78 @@
+import { describe, expect, it } from 'vitest';
+import { loadConfig } from './app-config.js';
+import { MAINNET, TESTNET } from './network.js';
+
+const valid = {
+  NODE_ENV: 'test',
+  STELLAR_NETWORK: 'testnet',
+  MERCHANT_ADDRESS: `G${'A'.repeat(55)}`,
+  SUBSCRIPTION_CONTRACT_ID: `C${'B'.repeat(55)}`,
+  MAX_FEE_STROOPS: '100000',
+  MAX_PAYMENT_USDC: '500',
+  MAX_SUBSCRIPTION_PRICE_USDC: '50.5',
+};
+
+describe('loadConfig', () => {
+  it('loads a valid testnet config with defaults', () => {
+    const result = loadConfig(valid);
+    if (!result.ok) throw new Error(result.error.issues.join('; '));
+    expect(result.value).toMatchObject({
+      env: 'test',
+      logLevel: 'info',
+      network: {
+        name: 'testnet',
+        passphrase: TESTNET.passphrase,
+        rpcUrl: 'https://soroban-testnet.stellar.org',
+        usdc: TESTNET.usdc,
+        maxFeeStroops: 100_000n,
+      },
+      limits: {
+        maxPayment: 5_000_000_000n,
+        maxSubscriptionPrice: 505_000_000n,
+        subscriptionApprovePeriods: 3,
+      },
+      fx: { supportedFiat: ['USD'], maxRateAgeSeconds: 93_600 },
+    });
+  });
+
+  it('loads mainnet when an RPC URL is given', () => {
+    const result = loadConfig({
+      ...valid,
+      STELLAR_NETWORK: 'mainnet',
+      STELLAR_RPC_URL: 'https://rpc.example.com',
+    });
+    expect(result.ok && result.value.network.usdc).toEqual(MAINNET.usdc);
+    expect(result.ok && result.value.network.horizonUrl).toBe('https://horizon.stellar.org');
+  });
+
+  it('parses the fiat list', () => {
+    const result = loadConfig({ ...valid, FX_SUPPORTED_FIAT: 'USD, GHS' });
+    expect(result.ok && result.value.fx.supportedFiat).toEqual(['USD', 'GHS']);
+  });
+
+  it.each<[string, Record<string, string | undefined>, string]>([
+    ['missing network', { STELLAR_NETWORK: undefined }, 'STELLAR_NETWORK'],
+    ['unknown network', { STELLAR_NETWORK: 'futurenet' }, 'STELLAR_NETWORK'],
+    ['mainnet without RPC', { STELLAR_NETWORK: 'mainnet' }, 'STELLAR_RPC_URL'],
+    ['http RPC', { STELLAR_RPC_URL: 'http://rpc.example.com' }, 'STELLAR_RPC_URL'],
+    ['contract as merchant', { MERCHANT_ADDRESS: `C${'A'.repeat(55)}` }, 'MERCHANT_ADDRESS'],
+    ['bad contract id', { SUBSCRIPTION_CONTRACT_ID: 'C123' }, 'SUBSCRIPTION_CONTRACT_ID'],
+    ['float fee', { MAX_FEE_STROOPS: '1.5' }, 'MAX_FEE_STROOPS'],
+    ['zero cap', { MAX_PAYMENT_USDC: '0' }, 'MAX_PAYMENT_USDC'],
+    ['8-decimal cap', { MAX_SUBSCRIPTION_PRICE_USDC: '1.00000001' }, 'MAX_SUBSCRIPTION_PRICE_USDC'],
+    ['approve periods 0', { SUBSCRIPTION_APPROVE_PERIODS: '0' }, 'SUBSCRIPTION_APPROVE_PERIODS'],
+    ['unsupported fiat', { FX_SUPPORTED_FIAT: 'USD,XXX' }, 'FX_SUPPORTED_FIAT'],
+    ['bad env', { NODE_ENV: 'prod' }, 'NODE_ENV'],
+  ])('rejects %s with a clear message', (_name, override, variable) => {
+    const result = loadConfig({ ...valid, ...override });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.issues.some((i) => i.startsWith(variable))).toBe(true);
+  });
+
+  it('never echoes values in error messages', () => {
+    const secretish = 'http://user:hunter2@rpc.example.com';
+    const result = loadConfig({ ...valid, STELLAR_RPC_URL: secretish });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.issues.join(' ')).not.toContain('hunter2');
+  });
+});
