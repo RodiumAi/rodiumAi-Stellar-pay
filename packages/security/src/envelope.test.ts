@@ -108,4 +108,19 @@ describe('envelope encryption (context §12.2)', () => {
   it('local dev KMS requires a 32-byte master key', () => {
     expect(() => createLocalDevKms(randomBytes(16), randomBytes)).toThrow();
   });
+
+  it('local dev KMS rejects truncated wrapped keys and truncated tags', async () => {
+    const wrapped = Buffer.from(await kms.wrapKey(randomBytes(32)));
+    await expect(kms.unwrapKey(wrapped.subarray(0, 28))).rejects.toThrow('too short');
+    await expect(kms.unwrapKey(wrapped.subarray(0, wrapped.length - 4))).rejects.toThrow();
+  });
+
+  it('rejects a ciphertext with its tag truncated', async () => {
+    const { old } = await keyrings();
+    const blob = encryptField(old, plaintext, loc, randomBytes);
+    expect(decryptField(old, blob.subarray(0, blob.length - 4), loc)).toEqual({
+      ok: false,
+      error: 'decryption_failed',
+    });
+  });
 });

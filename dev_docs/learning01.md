@@ -170,3 +170,13 @@ Config and security primitives
 - Why: HMAC verify claims the nonce only after the signature passes, so unauthenticated traffic cannot fill the nonce store; nonce-store errors propagate (fail closed). Config errors list variable names only, never values.
 - Fact: USDC issuers verified on Circle's docs; SAC IDs derived with `stellar contract id asset` (see `docs/dependencies.md`). SDF has no public mainnet RPC → `STELLAR_RPC_URL` required on mainnet.
 - Verified: 221 tests; security 100% lines, config 96%.
+
+### 2026-10-15 · S2 · security · ci-fail
+
+Semgrep: GCM decipher without a pinned tag length
+
+- What: `javascript.node-crypto.security.gcm-no-tag-length` (blocking) on `envelope.ts` and `kms.ts`.
+- Why: without `authTagLength`, Node accepts shorter tags, which weakens GCM authentication. `kms.ts` also had no length check on wrapped keys, and threw synchronously instead of rejecting.
+- Fix: `authTagLength: 16` on every GCM cipher/decipher; short wrapped keys rejected; KMS errors returned as rejected promises. Tests for truncated tags added.
+- Verified: Semgrep 1.178.0 locally: 0 findings; 60 security tests.
+- Prevent: run Semgrep before pushing security code (not in `pnpm verify`: needs Python).
