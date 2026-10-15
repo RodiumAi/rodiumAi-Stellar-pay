@@ -4,6 +4,19 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    "./brand": "./src/brand.ts",
+    "./ids": "./src/ids.ts",
+    "./memo": "./src/memo.ts",
+    "./money/convert": "./src/money/convert.ts",
+    "./money/fiat": "./src/money/fiat.ts",
+    "./money/fx-rate": "./src/money/fx-rate.ts",
+    "./money/stroops": "./src/money/stroops.ts",
+    "./payment": "./src/payment.ts",
+    "./random": "./src/random.ts",
+    "./result": "./src/result.ts",
+    "./stellar-address": "./src/stellar-address.ts",
+    "./subscription": "./src/subscription.ts",
+    "./time": "./src/time.ts",
+    "./uuid-v7": "./src/uuid-v7.ts"
   }
 }
