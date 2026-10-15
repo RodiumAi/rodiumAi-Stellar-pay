@@ -132,3 +132,32 @@ Money, IDs and state machines in `packages/core`
 - Decision: decimal parsing is hand-written (`money/decimal.ts`) because `eslint-plugin-security` flags the equivalent regexes as unsafe.
 - Verified: 149 tests (fast-check properties: round-trip, never rounds down, accumulation keeps every stroop); core lines 97%.
 - Prevent: lint bans `Number`, `parseFloat`, `parseInt`, `.toFixed` and float literals in `packages/core/src/money`.
+
+### 2026-10-15 · S0 · release · milestone
+
+Sprint 0 merged and tagged
+
+- What: PR #1 rebase-merged after all 5 checks passed; tag `v0.0.1`. First tag push failed: "ERR_PNPM_UNSUPPORTED_ENGINE … Expected version: 24.21.0 Got: v22.16.0".
+- Why: the pre-push hook runs in the shell's default Node (22); `engine-strict` rejects it.
+- Fix: run git push with Node 24.21.0 on PATH (`nvm use` in the repo).
+- Prevent: `.nvmrc` exists; set the shell default to 24.21.0 or use an nvm auto-switch hook.
+
+### 2026-10-15 · S4 · tooling · workaround
+
+stellar-cli source builds fail; using the prebuilt binary
+
+- What: `cargo install stellar-cli` → cxx build "fatal error: 'algorithm' file not found".
+- Why: macOS Command Line Tools are broken/outdated (no C++ standard headers), same root cause as the Homebrew failure.
+- Fix: installed `stellar-cli-28.1.0-x86_64-apple-darwin.tar.gz` from the GitHub release after matching its sha256 digest; `stellar 28.1.0`.
+- Prevent: reinstall CLT (`xcode-select --install`) before anything else needs a C++ toolchain.
+
+### 2026-10-15 · S1 · core · decision
+
+Money, IDs and state machines in `packages/core`
+
+- What: bigint stroops parse/format, fiat minor units (ISO 4217 table: USD EUR GBP GHS NGN KES ZAR XOF), 18-decimal `FxRate` (fiat per USDC, matches `numeric(38,18)`), conversion rounding up to 0.01 USDC; memo `RP`+12 Crockford; UUIDv7; payment + subscription state machines.
+- Why: context §5, §6, §13.2. Late receipts use ledger close time: a receipt at/after `expires_at` on pending/underpaid goes to `late_paid` even if the expiry job has not run yet.
+- Decision: retry delays apply after each consecutive failure (+1d, +3d, +5d → retries on day 1, 4, 9; 4th failure cancels). Configurable via `RetryPolicy`.
+- Decision: decimal parsing is hand-written (`money/decimal.ts`) because `eslint-plugin-security` flags the equivalent regexes as unsafe.
+- Verified: 149 tests (fast-check: round-trip, never rounds down, accumulation keeps every stroop); core lines 97%.
+- Prevent: lint bans `Number`, `parseFloat`, `parseInt`, `.toFixed` and float literals in `packages/core/src/money`.
