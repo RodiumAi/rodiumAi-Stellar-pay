@@ -1,6 +1,6 @@
 # RodiumAI Crypto Pay — Build Plan (Sprints)
 
-Source of truth: `soroban-context.md` (moves to `docs/context.md` in Sprint 0). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
+Source of truth: `docs/context.md` (formerly `soroban-context.md`). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
 
 Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 0 in progress.**
 
@@ -11,7 +11,7 @@ Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answ
 - The build is **layered, not feature-sliced**: each sprint completes one layer (core → security/config → db → contract → stellar → api → worker → checkout → subscriptions → hardening → release). Later sprints depend on earlier ones.
 - Every sprint ends with: **all tests green locally → pre-push gate → PR → CI green → merge → tag**. Nothing is pushed to `main` untested.
 - What happened, what went wrong and why goes in the **rolling learning log**: `dev_docs/learning01.md`, then `learning02.md`, `learning03.md`, … Each file is capped at 200 lines and is chronological across all sprints, not one file per sprint. Entries are tagged `S<n>` so a stage can be grepped.
-- Section references like §7.3 point to `soroban-context.md`. References written **plan §N** point to this file.
+- Section references like §7.3 point to `docs/context.md`. References written **plan §N** point to this file.
 
 ### Dependency graph
 
@@ -37,14 +37,15 @@ S4 (Rust contract) has no TypeScript dependency, but with a solo developer the s
 
 ### 1.2 Branching
 
-| Branch | Purpose | Lifetime |
-|---|---|---|
-| `main` | Always green, always releasable. Protected. | permanent |
-| `sprint/NN-<slug>` e.g. `sprint/01-core-domain` | All work for one sprint | ≤ 1 sprint |
-| `fix/<slug>` | Bug fix found after a sprint merged | hours–days |
-| `hotfix/<slug>` | Urgent fix after go-live; branches from latest release tag | hours |
+| Branch                                          | Purpose                                                    | Lifetime   |
+| ----------------------------------------------- | ---------------------------------------------------------- | ---------- |
+| `main`                                          | Always green, always releasable. Protected.                | permanent  |
+| `sprint/NN-<slug>` e.g. `sprint/01-core-domain` | All work for one sprint                                    | ≤ 1 sprint |
+| `fix/<slug>`                                    | Bug fix found after a sprint merged                        | hours–days |
+| `hotfix/<slug>`                                 | Urgent fix after go-live; branches from latest release tag | hours      |
 
 Rules:
+
 - Never commit directly to `main`.
 - If a sprint is large, split it into 2–4 **task PRs** into `main` (e.g. `sprint/02-config`, `sprint/02-security`) rather than one giant PR. Smaller PRs = reviewable, bisectable.
 - Rebase the sprint branch on `main` before opening/updating the PR (`git pull --rebase origin main`). No merge commits from `main` into sprint branches.
@@ -68,7 +69,6 @@ Rules:
 ### 1.5 Branch protection on `main` (managed by the GitHub organisation — out of scope for this plan)
 
 The repo lives in the RodiumAI GitHub org, whose admins own branch-protection settings. The rules below are the recommended target to hand to them; this plan does not configure them.
-
 
 - Require PR, require status checks (`verify`, `contract`, `security-scan`), require linear history, require up-to-date branch.
 - Block force-push and deletion.
@@ -134,6 +134,7 @@ Same as local plus: `pnpm install --frozen-lockfile`, coverage gate (90% on `cor
 **Goal:** an empty but fully guarded monorepo where bad code cannot reach `main`.
 
 Scope:
+
 - Move `soroban-context.md` → `docs/context.md`. Add `docs/runbooks/`, `docs/security/`.
 - pnpm 10 workspace with layout from §4 (empty packages with `package.json` + `src/index.ts` placeholder test).
 - `.npmrc` / `pnpm-workspace.yaml`: `minimumReleaseAge` 14 days, `onlyBuiltDependencies` allowlist, strict peers, exact versions (§16.2).
@@ -147,6 +148,7 @@ Scope:
 - Verify §17: latest stable versions of every §3 dependency (≥14 days old); record sources.
 
 Tests before push:
+
 - `pnpm verify` passes on the skeleton.
 - A deliberately bad commit on a throwaway branch (uses `any`, default export, `Math.random`) **fails** lint in CI — proves the guardrails work. Delete the branch after.
 - `cargo build --release` and `cargo clippy -D warnings` pass on the empty crate.
@@ -161,6 +163,7 @@ Exit: CI green, tag `v0.0.1`.
 **Goal:** pure business rules with no I/O, fully tested.
 
 Scope:
+
 - Branded types: `PaymentId`, `SubscriptionId`, `Stroops`, `StellarAddress`, `Memo` (§5).
 - `Result<T, E>` type and helpers.
 - Money: `parseAmount` (≤7 decimals, reject otherwise), `formatAmount` (exactly 7 decimals), fiat minor units + ISO 4217, conversion rounding **up** to 0.01 USDC (§5 Money).
@@ -171,6 +174,7 @@ Scope:
 - Lint rule: no `Number`/`parseFloat`/`toFixed` in `packages/core/money`.
 
 Tests before push:
+
 - Property tests (fast-check): `parse(format(x)) == x`; parse rejects >7 decimals, negatives, exponent notation, whitespace tricks; conversion never rounds down.
 - Every allowed state transition succeeds; every disallowed one returns an error value; exhaustive `never` checks compile.
 - Memo: format, length ≤ 28 bytes, normalization.
@@ -185,6 +189,7 @@ Exit: tag `v0.1.0`.
 **Goal:** every cryptographic and configuration primitive, isolated and tested.
 
 Scope:
+
 - `config`: Zod-validated config loaded once at boot; testnet/mainnet `NetworkConfig` files (§13.5); fail fast on invalid config.
 - HMAC request signing + verification: canonical string, ±300s skew, nonce check interface, two active key IDs, `timingSafeEqual` (§9.1).
 - Ed25519 webhook signing: `t=…,k=…,s=…` header over `"{t}.{raw_body}"`; reference verifier for the main app (§10.3).
@@ -194,6 +199,7 @@ Scope:
 - Central pino logger with redact paths (§5 Errors and logging).
 
 Tests before push:
+
 - HMAC: valid passes; replayed nonce, skew >300s, unknown key, revoked key, tampered body/path/method all fail.
 - Webhook: sign → verify round-trip; tampered body, old timestamp, wrong key fail.
 - Encryption: round-trip; ciphertext moved to a different row ID fails (AAD); tampered tag fails; key rotation reads old version.
@@ -210,6 +216,7 @@ Exit: tag `v0.2.0`.
 **Goal:** Postgres schema exactly as §7, least-privilege roles, typed repositories, proven concurrency behaviour.
 
 Scope:
+
 - Verify §17: Supabase Postgres major version; Supavisor ports, username format, prepared-statement behaviour.
 - Forward-only SQL migrations: schema §7.1, roles/grants/RLS policies §7.3. Migration runner using `rp_owner`.
 - Kysely types; repositories for payments, subscriptions, charges, receipts, outbox, cursors, audit log.
@@ -219,6 +226,7 @@ Scope:
 - Local dev: `supabase start` (same Postgres major as prod).
 
 Tests before push (integration, against local Supabase):
+
 - Migrations apply cleanly from zero; re-running is a no-op.
 - Role tests: `rp_api` cannot UPDATE `chain_receipts`; nobody can UPDATE/DELETE `chain_receipts`/`audit_log`; `anon`/`authenticated`/`service_role` see nothing.
 - Concurrency: two receipts for the same payment in parallel sum correctly; duplicate receipt inserts once; two workers claiming due rows never get the same row; second advisory-lock holder waits.
@@ -234,6 +242,7 @@ Exit: tag `v0.3.0`.
 **Goal:** contract from §14 with every invariant in §14.3 proven by unit tests, property tests, fuzzing and static analysis (plan §6 replaces the paid external audit).
 
 Scope:
+
 - Verify §17: latest `soroban-sdk`, `stellar-cli`; Circle USDC SAC contract ID on testnet; max entry TTL.
 - Functions from §14.1; behaviour §14.2; instance storage for config, persistent for subscriptions, TTL extended on touch.
 - Checked arithmetic, events on every state change.
@@ -246,6 +255,7 @@ Scope:
 - Start `docs/security/contract-review.md`: tool versions, findings, fixes, accepted risks, and a manual review against the Soroban security checklist (auth on every entrypoint, checked arithmetic, TTL/archival, upgrade path, event completeness).
 
 Tests before push (Soroban test env, `mock_auths` with exact invocations — never `mock_all_auths` for security tests):
+
 - Recipient is always the init-time merchant.
 - Price never changes after creation even if plan price changes.
 - Second `charge` in the same period fails.
@@ -265,6 +275,7 @@ Exit: tag `v0.4.0`. Learning-log entry recording tool versions and findings; not
 **Goal:** everything that talks to or reasons about the Stellar network, behind interfaces.
 
 Scope:
+
 - Verify §17: Circle USDC issuer (testnet + mainnet); current SDF guidance Horizon vs RPC — pick the default `LedgerSource`.
 - Startup check: configured passphrase must match what RPC reports (§13.5).
 - `LedgerSource` interface with Horizon and RPC implementations; receipt parsing for `payment` and path payments (counting amount **received**) (§13.2, §13.4).
@@ -273,6 +284,7 @@ Scope:
 - SEP-7 `web+stellar:pay` URI builder; transaction builder for `subscribe` with simulation; `live_until_ledger` computed from network TTL at runtime.
 
 Tests before push:
+
 - XDR guard **bypass suite**: wrong network, extra operation, wrong asset (same code different issuer), wrong destination, wrong amount, wrong memo, no time bounds, time bounds > 5 min, fee over cap, wrong contract ID, wrong plan ID, wrong subscriber — each rejected.
 - Receipt parser against recorded fixtures: plain payment, path payment (strict send/receive), missing memo, wrong asset, claimable balance → correct matched/unmatched/ignored classification.
 - Passphrase mismatch prevents startup.
@@ -287,6 +299,7 @@ Exit: tag `v0.5.0`. **Phase A (foundations) complete** — add a `milestone` ent
 **Goal:** the authenticated `/v1` API the main app calls.
 
 Scope:
+
 - Fastify 5, `@fastify/helmet`, body limit 16 KB, stable error codes, no stack traces (§9.2).
 - HMAC auth plugin with Upstash nonce store (`SET NX EX 600`, **fail closed**) (§8.2).
 - `@upstash/ratelimit` per key and per IP, in-process backstop (fail open).
@@ -301,6 +314,7 @@ Scope:
 - Upstash wrapper that refuses writes without TTL (§8.1).
 
 Tests before push:
+
 - Every endpoint: happy path + validation failures + auth failures.
 - Security: replay, skew, bad signature, unknown key, Upstash down → API rejects (fail closed); rate-limit store down → in-process limit still applies.
 - Idempotency: same key/same body → same response; same key/different body → 409.
@@ -319,6 +333,7 @@ Exit: tag `v0.6.0`.
 **Goal:** money arriving on-chain becomes a confirmed payment and a signed webhook.
 
 Scope:
+
 - In-process scheduler, graceful `SIGTERM` (stop claiming, 25s drain, release locks) (§15).
 - Ingest job: advisory-lock leader, cursor persisted in same transaction as receipts (§13.4).
 - Matching: memo → payment, accumulation, underpaid, overpayment recorded, unmatched + alert.
@@ -328,6 +343,7 @@ Scope:
 - Metric `ingest_lag_ledgers`.
 
 Tests before push:
+
 - Kill the ingester mid-batch, restart → no skipped or double-counted receipts.
 - Two worker replicas → one ingester leader; jobs never double-claim.
 - Underpay then top-up → confirmed with both tx hashes; overpay → confirmed + excess recorded.
@@ -345,6 +361,7 @@ Exit: tag `v0.7.0`.
 **Goal:** a user can pay a one-time payment end to end on **testnet**.
 
 Scope:
+
 - Verify §17: which Stellar Wallets Kit wallets support signing (and Soroban invocations).
 - Server routes: `GET /c/{token}` (SSR, amount/asset/destination/memo in plain text, SEP-7 QR as inline SVG), `POST /c/{token}/submit` (XDR guard → submit; tx hash not submitted before), `GET /c/{token}/status` (ETag, 5s Redis cache).
 - Vite vanilla TS page; wallet kit lazily loaded on click; Trusted Types; no `innerHTML`.
@@ -352,6 +369,7 @@ Scope:
 - Token validity: until final state or 24h.
 
 Tests before push:
+
 - CSP + all §11.3 headers present on every response.
 - Initial JS ≤ 30 KB gzipped (CI budget check).
 - Submit endpoint rejects every XDR from the S5 bypass suite with `422 invalid_transaction` and logs a security event.
@@ -368,6 +386,7 @@ Exit: tag `v0.8.0`. First demo-able milestone.
 **Goal:** recurring USDC subscriptions work on testnet with an isolated keeper signer.
 
 Scope:
+
 - `apps/signer`: mTLS-only, one operation, keeper-charge XDR guard (from S5), no DB/Redis access, logs every decision; evaluate Node `--permission` here first (§16.3).
 - Checkout subscribe flow: server builds + simulates `subscribe`, user signs once.
 - Worker jobs: charge subscriptions (simulate first → signer → submit → record), allowance warnings (14 days), TTL extension, keeper balance check.
@@ -375,6 +394,7 @@ Scope:
 - Retry schedule and `past_due` → `canceled`; no back-charging on recovery.
 
 Tests before push:
+
 - Signer refuses: non-charge call, wrong contract, wrong source, fee over cap, long time bounds, multiple ops. Every refusal increments `signer_rejections_total`.
 - Simulation failure (insufficient balance/allowance) → failed charge recorded, `past_due`, nothing submitted.
 - Retry +1d/+3d/+5d then cancel (time-travel test).
@@ -390,6 +410,7 @@ Exit: tag `v0.9.0`.
 **Goal:** production-shaped deployment on staging.
 
 Scope:
+
 - Dockerfiles: distroless/Chainguard, non-root, read-only FS, no shell; weekly rebuild.
 - k8s manifests: pod security, default-deny network policies with explicit egress allowlists (§16.3); signer only reachable from worker.
 - AWS KMS adapter replacing dev KMS; AWS Secrets Manager wiring; `docs/runbooks/rotation.md`. (AWS infrastructure is owned by the teammate handling hosting — this repo provides the adapter, manifests and checklists.)
@@ -403,6 +424,7 @@ Scope:
 - Contract security review pass 2 (plan §6): re-run all tools on the final contract, long fuzz run, update `docs/security/contract-review.md`.
 
 Tests before push:
+
 - Trivy: zero high/critical in images and IaC.
 - Network-policy test: signer cannot reach Supabase/Upstash/internet; API cannot reach signer.
 - Container runs as non-root with read-only FS; no shell present.
@@ -418,12 +440,14 @@ Exit: tag `v0.10.0`, staging environment live on testnet (on AWS, once the teamm
 **Goal:** RodiumAI app can offer crypto, dark-launched, with mainnet gated on the plan §6 contract security review.
 
 Scope (two repos):
+
 - **Main app repo** (deployed project — follow its own branch/PR rules; adapter written by the same solo developer): crypto provider adapter next to MoMo, webhook verifier with dedup on `id`, grant access only on confirmed/activated/renewed events, fallback polling, feature flag **default off**, hide option when health fails (§10.4).
 - **This repo:** testnet E2E release script (§19), load sanity test, `v1.0.0-rc.1`.
 - Verify §17: legal/regulatory requirements per jurisdiction; mainnet USDC issuer/SAC ID; Upstash plan/pricing.
 - Final contract security sign-off per plan §6 (all tools clean on the exact WASM hash being deployed); optional: open a public bug bounty; optional: apply to the Stellar Community Fund to unlock a funded Audit Bank audit later.
 
 Tests before push:
+
 - Main-app adapter: signature verify on raw body, stale timestamp rejected, duplicate event ignored, access not granted on redirect alone.
 - Full testnet E2E script passes from the main app's staging environment.
 - With flag off, main app behaves exactly as before (MoMo regression tests green).
@@ -434,35 +458,35 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contra
 
 ## 4. Sprint status tracker
 
-| Sprint | Branch | Status | Tag |
-|---|---|---|---|
-| S0 Foundation | `sprint/00-foundation` | in progress | — |
-| S1 Core | `sprint/01-core-domain` | not started | — |
-| S2 Config + security | `sprint/02-config-security` | not started | — |
-| S3 DB | `sprint/03-db` | not started | — |
-| S4 Contract | `sprint/04-contract` | not started | — |
-| S5 Stellar | `sprint/05-stellar` | not started | — |
-| S6 API | `sprint/06-api` | not started | — |
-| S7 Worker | `sprint/07-worker-payments` | not started | — |
-| S8 Checkout | `sprint/08-checkout` | not started | — |
-| S9 Subscriptions | `sprint/09-subscriptions` | not started | — |
-| S10 Hardening | `sprint/10-hardening` | not started | — |
-| S11 Release | `sprint/11-release` | not started | — |
+| Sprint               | Branch                      | Status      | Tag |
+| -------------------- | --------------------------- | ----------- | --- |
+| S0 Foundation        | `sprint/00-foundation`      | in progress | —   |
+| S1 Core              | `sprint/01-core-domain`     | not started | —   |
+| S2 Config + security | `sprint/02-config-security` | not started | —   |
+| S3 DB                | `sprint/03-db`              | not started | —   |
+| S4 Contract          | `sprint/04-contract`        | not started | —   |
+| S5 Stellar           | `sprint/05-stellar`         | not started | —   |
+| S6 API               | `sprint/06-api`             | not started | —   |
+| S7 Worker            | `sprint/07-worker-payments` | not started | —   |
+| S8 Checkout          | `sprint/08-checkout`        | not started | —   |
+| S9 Subscriptions     | `sprint/09-subscriptions`   | not started | —   |
+| S10 Hardening        | `sprint/10-hardening`       | not started | —   |
+| S11 Release          | `sprint/11-release`         | not started | —   |
 
 ---
 
 ## 5. Decisions (answered 2026-10-15)
 
-| # | Question | Decision |
-|---|---|---|
-| 1 | Team size | **Solo developer.** Sprints run sequentially; S4 not parallel. No required PR approvals (self-review checklist instead); CODEOWNERS is documentation until a second engineer joins. |
-| 2 | Sprint length | **No calendar.** Continuous session; a sprint ends at its exit tag. Size labels are estimates only. |
-| 3 | Accounts | **Provided when reached.** Supabase credentials at S3, Upstash at S6; until then local Supabase and local Redis + `serverless-redis-http` are used. GitHub is org-managed; branch protection is out of scope. |
-| 4 | Hosting / KMS | **AWS**, set up later by a teammate. KMS = **AWS KMS**, secrets = **AWS Secrets Manager**. Until S10 the local dev KMS is used. |
-| 5 | FX provider | **ExchangeRate-API** (exchangerate-api.com). Start on Free (1,500 req/month, daily updates); move to Pro ($10/mo, hourly) before meaningful non-USD volume. GHS verified available 2026-10-15. USD needs no provider (rate = 1). |
-| 6 | Main app | The deployed RodiumAI product (currently MoMo). Only touched in S11 by a small, flag-gated adapter; the solo developer writes that PR in the main app repo. Nothing needed before S11. |
-| 7 | Audit | **No paid external audit.** Replaced by free/open-source tooling and process (plan §6). Accepted risk, mitigated by exposure caps. |
-| 8 | Repo name | **`rodiumAi-Stellar-pay`** (context file updated). |
+| #   | Question      | Decision                                                                                                                                                                                                                         |
+| --- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Team size     | **Solo developer.** Sprints run sequentially; S4 not parallel. No required PR approvals (self-review checklist instead); CODEOWNERS is documentation until a second engineer joins.                                              |
+| 2   | Sprint length | **No calendar.** Continuous session; a sprint ends at its exit tag. Size labels are estimates only.                                                                                                                              |
+| 3   | Accounts      | **Provided when reached.** Supabase credentials at S3, Upstash at S6; until then local Supabase and local Redis + `serverless-redis-http` are used. GitHub is org-managed; branch protection is out of scope.                    |
+| 4   | Hosting / KMS | **AWS**, set up later by a teammate. KMS = **AWS KMS**, secrets = **AWS Secrets Manager**. Until S10 the local dev KMS is used.                                                                                                  |
+| 5   | FX provider   | **ExchangeRate-API** (exchangerate-api.com). Start on Free (1,500 req/month, daily updates); move to Pro ($10/mo, hourly) before meaningful non-USD volume. GHS verified available 2026-10-15. USD needs no provider (rate = 1). |
+| 6   | Main app      | The deployed RodiumAI product (currently MoMo). Only touched in S11 by a small, flag-gated adapter; the solo developer writes that PR in the main app repo. Nothing needed before S11.                                           |
+| 7   | Audit         | **No paid external audit.** Replaced by free/open-source tooling and process (plan §6). Accepted risk, mitigated by exposure caps.                                                                                               |
+| 8   | Repo name     | **`rodiumAi-Stellar-pay`** (context file updated).                                                                                                                                                                               |
 
 ---
 
@@ -472,14 +496,14 @@ Free tools do not equal a professional audit. They catch known bug classes and p
 
 ### 6.1 Tooling (all free / open source)
 
-| Tool | Purpose | When |
-|---|---|---|
-| `cargo clippy -D warnings`, `cargo audit`, `cargo deny` | Lint, dependency CVEs, licences | Every push (S0+) |
-| **Scout** (CoinFabrik, MIT) | Soroban-specific static analysis | Every push touching `contracts/` (S0+) |
-| Soroban test env, `mock_auths` exact | Unit + auth tests per §14.3 | Every push (S4+) |
-| **Komet** (Runtime Verification) | Property-based fuzzing + symbolic proofs of invariants | CI on `contracts/` changes (S4+) |
-| `cargo-fuzz` / `proptest` | Random call-sequence fuzzing | Short run in CI, ≥ 1 h before each contract tag |
-| **Certora Sunbeam** (optional) | Formal verification of compiled WASM | S10 |
+| Tool                                                    | Purpose                                                | When                                            |
+| ------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| `cargo clippy -D warnings`, `cargo audit`, `cargo deny` | Lint, dependency CVEs, licences                        | Every push (S0+)                                |
+| **Scout** (CoinFabrik, MIT)                             | Soroban-specific static analysis                       | Every push touching `contracts/` (S0+)          |
+| Soroban test env, `mock_auths` exact                    | Unit + auth tests per §14.3                            | Every push (S4+)                                |
+| **Komet** (Runtime Verification)                        | Property-based fuzzing + symbolic proofs of invariants | CI on `contracts/` changes (S4+)                |
+| `cargo-fuzz` / `proptest`                               | Random call-sequence fuzzing                           | Short run in CI, ≥ 1 h before each contract tag |
+| **Certora Sunbeam** (optional)                          | Formal verification of compiled WASM                   | S10                                             |
 
 Scout's last upstream release is over a year old (checked 2026-10-15) — record the version used and treat it as one signal among several.
 

@@ -31,20 +31,20 @@ RodiumAI app ──HMAC API──▶ Crypto Pay API ──▶ Postgres / Redis
 
 ## 2. Key decisions (do not revisit without a written reason)
 
-| Area | Decision | Why |
-|---|---|---|
-| Asset | USDC (Circle) on Stellar | Stable value, 7-decimal precision, low fees, wide wallet support |
-| One-time payments | Classic Stellar payments matched by memo | Works with every wallet and exchange; no contract risk |
-| Subscriptions | Soroban contract using SAC `approve` + `transfer_from` | Pull payments with on-chain enforcement of price and interval |
-| Service boundary | Separate deployable with its own database | Failure, secret and deploy isolation from the main app |
-| Checkout | Hosted by this service | Keeps wallet code and Stellar logic out of the main frontend |
-| Main-app auth | HMAC-SHA256 request signing + mTLS on the private network | Replay-resistant, no bearer tokens on the wire |
-| Webhook auth | Ed25519 signatures | Main app holds only a public key; a leak there cannot forge events |
-| Money type | `bigint` in stroops (1 USDC = 10,000,000 stroops) | No floating point anywhere money is represented |
-| Source of truth | Postgres (Supabase) | Redis (Upstash) is acceleration only; losing it must never lose money state |
-| Managed data | Supabase Postgres used as a plain database; Upstash Redis over HTTPS | No database servers to run or patch; Supabase Auth, Storage, Realtime and the Data API are not used |
-| Jobs | Postgres-backed scheduling (`FOR UPDATE SKIP LOCKED`), no BullMQ | Every job is already a scan of Postgres state; avoids per-command Redis billing from queue polling |
-| Signing | Dedicated signer process that validates before signing | A compromised API or worker cannot make the keeper sign arbitrary transactions |
+| Area              | Decision                                                             | Why                                                                                                 |
+| ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Asset             | USDC (Circle) on Stellar                                             | Stable value, 7-decimal precision, low fees, wide wallet support                                    |
+| One-time payments | Classic Stellar payments matched by memo                             | Works with every wallet and exchange; no contract risk                                              |
+| Subscriptions     | Soroban contract using SAC `approve` + `transfer_from`               | Pull payments with on-chain enforcement of price and interval                                       |
+| Service boundary  | Separate deployable with its own database                            | Failure, secret and deploy isolation from the main app                                              |
+| Checkout          | Hosted by this service                                               | Keeps wallet code and Stellar logic out of the main frontend                                        |
+| Main-app auth     | HMAC-SHA256 request signing + mTLS on the private network            | Replay-resistant, no bearer tokens on the wire                                                      |
+| Webhook auth      | Ed25519 signatures                                                   | Main app holds only a public key; a leak there cannot forge events                                  |
+| Money type        | `bigint` in stroops (1 USDC = 10,000,000 stroops)                    | No floating point anywhere money is represented                                                     |
+| Source of truth   | Postgres (Supabase)                                                  | Redis (Upstash) is acceleration only; losing it must never lose money state                         |
+| Managed data      | Supabase Postgres used as a plain database; Upstash Redis over HTTPS | No database servers to run or patch; Supabase Auth, Storage, Realtime and the Data API are not used |
+| Jobs              | Postgres-backed scheduling (`FOR UPDATE SKIP LOCKED`), no BullMQ     | Every job is already a scan of Postgres state; avoids per-command Redis billing from queue polling  |
+| Signing           | Dedicated signer process that validates before signing               | A compromised API or worker cannot make the keeper sign arbitrary transactions                      |
 
 ---
 
@@ -53,6 +53,7 @@ RodiumAI app ──HMAC API──▶ Crypto Pay API ──▶ Postgres / Redis
 Use the **latest stable release of each major listed, pinned to an exact version that has been public for at least 14 days** (see §16). Record exact versions in the lockfile; never use ranges.
 
 **Backend (TypeScript)**
+
 - Node.js 24 LTS
 - TypeScript 5.x, `strict` plus the flags in §5
 - Fastify 5 (HTTP), `@fastify/helmet`, `@fastify/rate-limit`
@@ -64,18 +65,22 @@ Use the **latest stable release of each major listed, pinned to an exact version
 - Vitest, Testcontainers, fast-check (property tests for money math)
 
 **Smart contract**
+
 - Rust stable, `soroban-sdk` latest stable, `stellar-cli` for build and deploy
 
 **Checkout frontend**
+
 - Vite, vanilla TypeScript, no UI framework
 - Stellar Wallets Kit, loaded lazily only when the user clicks "Connect wallet"
 - QR codes rendered server-side as inline SVG
 
 **Data**
+
 - Supabase Postgres (Pro plan or higher, PITR add-on), accessed through Supavisor
 - Upstash Redis, one database, used only for rate limits, nonces, idempotency fast path and short-lived caches
 
 **Package management**
+
 - pnpm 10 workspaces with `minimumReleaseAge` and a build-script allowlist
 
 ---
@@ -138,7 +143,7 @@ The bar is code a senior reviewer approves without comments of their own.
   "verbatimModuleSyntax": true,
   "isolatedModules": true,
   "module": "NodeNext",
-  "target": "ES2024"
+  "target": "ES2024",
 }
 ```
 
@@ -183,6 +188,7 @@ confirmed ──(admin refund executed)──▶ refunded
 ```
 
 Rules:
+
 - Multiple receipts with the same memo accumulate. Confirmation happens when the sum reaches the amount due.
 - Overpayment confirms the payment and records the excess for refund review; it never silently disappears.
 - A receipt for an unknown memo, a missing memo, or a wrong asset is stored as `unmatched` and raises an alert.
@@ -199,6 +205,7 @@ active | past_due ──(user or admin cancels)──▶ canceled
 ```
 
 Rules:
+
 - The price is locked into the subscription at creation. Plan price changes apply only to new subscriptions.
 - No back-charging: a subscription recovering from `past_due` starts a fresh period at the successful charge.
 - Retry schedule for failed charges: +1 day, +3 days, +5 days, then cancel. Configurable.
@@ -455,12 +462,12 @@ Table privileges, not policies, decide what each role can do; the policies only 
 
 ### 7.5 Connections (Supavisor)
 
-| Process | Connection | Why |
-|---|---|---|
-| API | Supavisor **transaction mode** (port 6543) | Short queries, many processes |
-| Worker (jobs) | Supavisor **transaction mode** | Same |
+| Process              | Connection                                                  | Why                                                                          |
+| -------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| API                  | Supavisor **transaction mode** (port 6543)                  | Short queries, many processes                                                |
+| Worker (jobs)        | Supavisor **transaction mode**                              | Same                                                                         |
 | Ingester leader lock | Supavisor **session mode** (port 5432) or direct connection | `pg_try_advisory_lock` is session-scoped and must survive between statements |
-| Migrations | Direct or session mode | DDL and session settings |
+| Migrations           | Direct or session mode                                      | DDL and session settings                                                     |
 
 - Transaction mode does not support named prepared statements. Use plain parameterized queries (the default in `pg` with Kysely) and never enable statement naming.
 - Pooler usernames have the form `rp_api.<project_ref>`.
@@ -490,13 +497,13 @@ One Upstash Redis database per environment, accessed over HTTPS with `@upstash/r
 
 ### 8.2 Usage
 
-| Key | Purpose | TTL | Failure behaviour |
-|---|---|---|---|
-| `rp:rl:api:{keyId}` | API rate limit (`@upstash/ratelimit`, sliding window) | 60s | fail open, with a lower in-process limit as backstop |
-| `rp:rl:ip:{ip}` | checkout rate limit per IP | 60s | fail open, in-process backstop |
-| `rp:nonce:{keyId}:{nonce}` | HMAC replay protection (`SET NX EX`) | 600s | **fail closed** |
-| `rp:idem:{key}` | idempotency fast path | 24h | fall back to Postgres unique constraint |
-| `rp:status:{paymentId}` | checkout status cache for polling | 5s | read Postgres |
+| Key                        | Purpose                                               | TTL  | Failure behaviour                                    |
+| -------------------------- | ----------------------------------------------------- | ---- | ---------------------------------------------------- |
+| `rp:rl:api:{keyId}`        | API rate limit (`@upstash/ratelimit`, sliding window) | 60s  | fail open, with a lower in-process limit as backstop |
+| `rp:rl:ip:{ip}`            | checkout rate limit per IP                            | 60s  | fail open, in-process backstop                       |
+| `rp:nonce:{keyId}:{nonce}` | HMAC replay protection (`SET NX EX`)                  | 600s | **fail closed**                                      |
+| `rp:idem:{key}`            | idempotency fast path                                 | 24h  | fall back to Postgres unique constraint              |
+| `rp:status:{paymentId}`    | checkout status cache for polling                     | 5s   | read Postgres                                        |
 
 ### 8.3 Why there is no Redis queue
 
@@ -570,6 +577,7 @@ GET  /v1/health/ready
 `POST /v1/subscriptions` takes `merchant_subscription_ref`, `customer_ref`, `plan_code` and `return_url`, and returns the same shape with `status: "incomplete"`.
 
 Rules:
+
 - `return_url` must match a configured origin allowlist exactly (scheme, host, port).
 - `customer_ref` is encrypted before storage (§12) and is never returned in full.
 - Error responses: `{ "error": { "code": "validation_failed", "message": "..." } }` with no internal detail.
@@ -629,12 +637,14 @@ Served at `pay.<domain>` by the API process from a static Vite build. The page i
 ### 11.1 Flow
 
 One-time payment:
+
 1. `GET /c/{token}` renders the page server-side with amount, memo, a SEP-7 `web+stellar:pay` URI and its QR code as inline SVG.
 2. "Pay with wallet" lazily imports the wallet kit, the user connects and signs.
 3. The browser posts the signed XDR to `POST /c/{token}/submit`. The server validates it (§13.3) and submits it to the network. The browser never talks to Stellar infrastructure directly.
 4. The page polls `GET /c/{token}/status` (ETag, backoff from 3s to 15s) and redirects to `return_url` on a final state.
 
 Subscription:
+
 1. The server builds and simulates a `subscribe` invocation for the connected address and returns the unsigned XDR.
 2. The user signs once. That signature authorizes `subscribe`, the nested `approve`, and the first period's transfer.
 3. Same submit and polling path as above.
@@ -713,16 +723,16 @@ If a wallet module requires a CSP relaxation, add the narrowest possible excepti
 - Stored in the platform secret store (AWS Secrets Manager), mounted at runtime, never baked into images, never in git, never in plain environment variables visible to other processes where avoidable.
 - Every secret has an owner, a rotation period and a documented rotation procedure in `docs/runbooks/rotation.md`.
 
-| Secret | Holder | Rotation |
-|---|---|---|
-| API HMAC keys | API, main app | 90 days, overlapping |
-| Webhook Ed25519 private key | worker | 90 days, overlapping |
-| Field-encryption KEK | KMS only | yearly, automatic |
-| Blind-index key | API, worker | only with full re-index |
-| Keeper signing key | signer only | 180 days or on any suspicion |
-| FX provider API key (ExchangeRate-API) | API | yearly or on suspicion |
-| Supabase role passwords | per service | 90 days |
-| Upstash REST token | API, worker | 90 days |
+| Secret                                 | Holder        | Rotation                     |
+| -------------------------------------- | ------------- | ---------------------------- |
+| API HMAC keys                          | API, main app | 90 days, overlapping         |
+| Webhook Ed25519 private key            | worker        | 90 days, overlapping         |
+| Field-encryption KEK                   | KMS only      | yearly, automatic            |
+| Blind-index key                        | API, worker   | only with full re-index      |
+| Keeper signing key                     | signer only   | 180 days or on any suspicion |
+| FX provider API key (ExchangeRate-API) | API           | yearly or on suspicion       |
+| Supabase role passwords                | per service   | 90 days                      |
+| Upstash REST token                     | API, worker   | 90 days                      |
 
 ---
 
@@ -730,12 +740,12 @@ If a wallet module requires a CSP relaxation, add the narrowest possible excepti
 
 ### 13.1 Accounts and roles
 
-| Account | Purpose | Key custody |
-|---|---|---|
-| Merchant (receiving) | Receives all USDC; has the USDC trustline | No key on any server. Multisig 2-of-3 hardware wallets, master weight 0 |
-| Treasury (cold) | Periodic sweeps from merchant | Offline multisig |
-| Keeper | Pays fees and is the only caller allowed to `charge` | Signer service only; holds minimal XLM; balance alert |
-| Contract admin | Plans, pause, upgrade | Multisig account, offline signers |
+| Account              | Purpose                                              | Key custody                                                             |
+| -------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| Merchant (receiving) | Receives all USDC; has the USDC trustline            | No key on any server. Multisig 2-of-3 hardware wallets, master weight 0 |
+| Treasury (cold)      | Periodic sweeps from merchant                        | Offline multisig                                                        |
+| Keeper               | Pays fees and is the only caller allowed to `charge` | Signer service only; holds minimal XLM; balance alert                   |
+| Contract admin       | Plans, pause, upgrade                                | Multisig account, offline signers                                       |
 
 The receiving side needs only public keys. The only hot key in the system is the keeper, and its power is limited by the contract to charging subscriptions that are due, at their locked price, to the fixed merchant address.
 
@@ -774,7 +784,11 @@ type NetworkConfig = {
   readonly passphrase: string;
   readonly rpcUrl: string;
   readonly horizonUrl: string;
-  readonly usdc: { readonly code: 'USDC'; readonly issuer: StellarAddress; readonly contractId: string };
+  readonly usdc: {
+    readonly code: 'USDC';
+    readonly issuer: StellarAddress;
+    readonly contractId: string;
+  };
   readonly merchant: StellarAddress;
   readonly subscriptionContractId: string;
   readonly maxFeeStroops: bigint;
@@ -835,16 +849,16 @@ The signer exposes one operation over mTLS on the private network: sign a keeper
 
 ## 15. Workers and jobs
 
-| Job | Trigger | Notes |
-|---|---|---|
-| Ingest | long-running, advisory-lock leader | §13.4 |
-| Reconcile | every 15 min | idempotent re-scan |
-| Expire payments | every 30 s | `SKIP LOCKED` batch on `payments_expiry_idx` |
-| Charge subscriptions | every 60 s | claims due rows, simulates, asks signer, submits, records charge |
-| Allowance warnings | hourly | emits `subscription.allowance_expiring` |
-| Extend contract TTLs | daily | for active subscriptions nearing archival |
-| Dispatch webhooks | every 5 s | from `outbox_events` |
-| Keeper balance check | every 5 min | alert below threshold |
+| Job                  | Trigger                            | Notes                                                            |
+| -------------------- | ---------------------------------- | ---------------------------------------------------------------- |
+| Ingest               | long-running, advisory-lock leader | §13.4                                                            |
+| Reconcile            | every 15 min                       | idempotent re-scan                                               |
+| Expire payments      | every 30 s                         | `SKIP LOCKED` batch on `payments_expiry_idx`                     |
+| Charge subscriptions | every 60 s                         | claims due rows, simulates, asks signer, submits, records charge |
+| Allowance warnings   | hourly                             | emits `subscription.allowance_expiring`                          |
+| Extend contract TTLs | daily                              | for active subscriptions nearing archival                        |
+| Dispatch webhooks    | every 5 s                          | from `outbox_events`                                             |
+| Keeper balance check | every 5 min                        | alert below threshold                                            |
 
 Charging always simulates first. A simulation failure (insufficient balance or allowance) records a failed charge with a code and moves the subscription to `past_due` without submitting.
 
