@@ -2,6 +2,25 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import security from 'eslint-plugin-security';
 import tseslint from 'typescript-eslint';
 
+const restrictedSyntax = [
+  {
+    selector: 'ExportDefaultDeclaration',
+    message: 'Use named exports only (context §5).',
+  },
+  {
+    selector: "Property[key.name='rejectUnauthorized'][value.value=false]",
+    message: 'TLS certificate verification must never be disabled (context §12.1).',
+  },
+];
+
+const randomRestriction = {
+  object: 'Math',
+  property: 'random',
+  message: 'Use crypto.randomBytes / crypto.getRandomValues (context §12.3).',
+};
+
+const moneyMessage = 'Money is bigint stroops only; no floating point (context §5 Money).';
+
 export default defineConfig(
   globalIgnores(['**/dist/', '**/coverage/', '**/node_modules/', 'contracts/']),
   {
@@ -28,25 +47,27 @@ export default defineConfig(
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      'no-restricted-syntax': ['error', ...restrictedSyntax],
+      'no-restricted-properties': ['error', randomRestriction],
+    },
+  },
+  {
+    files: ['packages/core/src/money/**/*.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'Number', message: moneyMessage },
+        { name: 'parseFloat', message: moneyMessage },
+        { name: 'parseInt', message: moneyMessage },
+      ],
       'no-restricted-syntax': [
         'error',
-        {
-          selector: 'ExportDefaultDeclaration',
-          message: 'Use named exports only (context §5).',
-        },
-        {
-          selector: "Property[key.name='rejectUnauthorized'][value.value=false]",
-          message: 'TLS certificate verification must never be disabled (context §12.1).',
-        },
+        ...restrictedSyntax,
+        { selector: "MemberExpression[property.name='toFixed']", message: moneyMessage },
+        // Numeric literals with a decimal point or exponent; string raws start with a quote.
+        { selector: 'Literal[raw=/^[0-9]*[.][0-9]|^[0-9]+[eE]/]', message: moneyMessage },
       ],
-      'no-restricted-properties': [
-        'error',
-        {
-          object: 'Math',
-          property: 'random',
-          message: 'Use crypto.randomBytes / crypto.getRandomValues (context §12.3).',
-        },
-      ],
+      'no-restricted-properties': ['error', randomRestriction],
     },
   },
   {
