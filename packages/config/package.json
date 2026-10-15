@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    "./app-config": "./src/app-config.ts",
+    "./network": "./src/network.ts"
+  },
+  "dependencies": {
+    "@rp/core": "workspace:*",
+    "zod": "4.6.5"
   }
 }

@@ -4,6 +4,17 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    "./blind-index": "./src/blind-index.ts",
+    "./encoding": "./src/encoding.ts",
+    "./envelope": "./src/envelope.ts",
+    "./hmac-auth": "./src/hmac-auth.ts",
+    "./kms": "./src/kms.ts",
+    "./logger": "./src/logger.ts",
+    "./tokens": "./src/tokens.ts",
+    "./webhook-signature": "./src/webhook-signature.ts"
+  },
+  "dependencies": {
+    "@rp/core": "workspace:*",
+    "pino": "10.3.1"
   }
 }

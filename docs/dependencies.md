@@ -13,23 +13,23 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 
 ## Installed in Sprint 0 (dev tooling)
 
-| Package                      | Pinned  | Published  |
-| ---------------------------- | ------- | ---------- |
-| typescript (5.x per §3)      | 5.9.3   | 2025-09-30 |
-| eslint                       | 10.11.0 | 2026-09-18 |
-| typescript-eslint            | 8.71.0  | 2026-09-28 |
-| eslint-plugin-security       | 4.2.0   | 2026-10-01 |
-| prettier                     | 3.9.9   | 2026-09-23 |
-| vitest / @vitest/coverage-v8 | 5.0.3   | 2026-09-30 |
-| @types/node (24)             | 24.19.0 | 2026-09-25 |
-| fast-check (S1)              | 4.10.2  | 2026-09-19 |
+| Package                      | Pinned  | Published                        |
+| ---------------------------- | ------- | -------------------------------- |
+| typescript (5.x per §3)      | 5.9.3   | 2025-09-30                       |
+| eslint                       | 10.11.0 | 2026-09-18                       |
+| typescript-eslint            | 8.71.0  | 2026-09-28                       |
+| eslint-plugin-security       | 4.2.0   | 2026-10-01                       |
+| prettier                     | 3.9.9   | 2026-09-23                       |
+| vitest / @vitest/coverage-v8 | 5.0.3   | 2026-09-30                       |
+| @types/node (24)             | 24.19.0 | 2026-09-25                       |
+| fast-check (S1)              | 4.10.2  | 2026-09-19                       |
+| zod (S2, config)             | 4.6.5   | 2026-09-13                       |
+| pino (S2, security)          | 10.3.1  | 2026-02-09 (10.4.0 is < 14 days) |
 
 ## Selected for later sprints (re-check age when installed)
 
 | Package                         | Version         | Published               | Sprint |
 | ------------------------------- | --------------- | ----------------------- | ------ |
-| zod                             | 4.6.5           | 2026-09-13              | S2     |
-| pino                            | 10.3.1          | 2026-02-09              | S2     |
 | kysely                          | 0.29.6          | 2026-09-16              | S3     |
 | pg / @types/pg                  | 8.23.1 / 8.23.1 | 2026-09-30 / 2026-08-17 | S3     |
 | testcontainers                  | 12.2.0          | 2026-09-28              | S3     |
@@ -57,3 +57,12 @@ TypeScript 7 (native) exists, but §3 specifies 5.x and typescript-eslint 8.71 s
 | Swatinem/rust-cache       | v2.9.2 (`6323deb`)       | 2026-08-06 |
 | gitleaks                  | 8.30.1 (sha256-verified) | 2026-03-21 |
 | semgrep                   | 1.178.0                  | 2026-09-23 |
+
+## Network facts (context §17)
+
+| Fact                 | Value                                                      | Source                                                                 |
+| -------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------- |
+| USDC issuer, testnet | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` | developers.circle.com/stablecoins/usdc-contract-addresses (2026-10-15) |
+| USDC issuer, mainnet | `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN` | same                                                                   |
+| USDC SAC, testnet    | `CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA` | `stellar contract id asset --asset USDC:<issuer> --network testnet`    |
+| USDC SAC, mainnet    | `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75` | same, `--network mainnet`                                              |
