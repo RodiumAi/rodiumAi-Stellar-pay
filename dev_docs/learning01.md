@@ -93,3 +93,13 @@ Scout cannot run on a crate without soroban-sdk
 - Why: Scout detects the target chain from dependencies; the S0 crate is intentionally empty.
 - Fix: local gate and CI skip Scout until `subscription/Cargo.toml` lists `soroban-sdk`; mandatory from S4. Plan S0 test text corrected.
 - Verified: cargo-scout-audit 0.3.17 installed locally.
+
+### 2026-10-15 · S0 · ci · ci-fail
+
+CodeQL and OSV failed: org has no GitHub Code Security
+
+- What: "Code Security must be enabled for this repository to use code scanning." CodeQL also: "Resource not accessible by integration" (get-a-workflow-run).
+- Why: both jobs uploaded SARIF to code scanning, which private org repos only get with Code Security; CodeQL also lacked `actions: read`.
+- Fix: OSV runs as a pinned, checksum-verified binary in `security-scan` and fails on findings; CodeQL uses `upload: never` and `scripts/sarif-gate.py` blocks on security-severity ≥ 7.0.
+- Verified: guardrail PR #2 (bad code) failed `verify` with 6 lint errors, then closed and deleted.
+- Prevent: if the org enables Code Security later, re-enable uploads for the GitHub UI view.
