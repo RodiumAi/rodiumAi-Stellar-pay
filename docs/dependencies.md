@@ -4,11 +4,12 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 
 ## Runtime and toolchain
 
-| Item           | Pinned  | Published  | Newest seen          | Note                            |
-| -------------- | ------- | ---------- | -------------------- | ------------------------------- |
-| Node.js 24 LTS | 24.21.0 | 2026-09-07 | 24.22.0 (2026-10-14) | newest is < 14 days             |
-| pnpm 10        | 10.34.6 | 2026-09-28 | 10.34.7 (2026-10-12) | newest is < 14 days             |
-| Rust           | 1.98.0  | 2026-08-18 | —                    | `contracts/rust-toolchain.toml` |
+| Item           | Pinned  | Published  | Newest seen          | Note                                                         |
+| -------------- | ------- | ---------- | -------------------- | ------------------------------------------------------------ |
+| Node.js 24 LTS | 24.21.0 | 2026-09-07 | 24.22.0 (2026-10-14) | newest is < 14 days                                          |
+| pnpm 10        | 10.34.6 | 2026-09-28 | 10.34.7 (2026-10-12) | newest is < 14 days                                          |
+| Rust           | 1.98.0  | 2026-08-18 | —                    | `contracts/rust-toolchain.toml`                              |
+| stellar-cli    | 28.1.0  | 2026-09-26 | —                    | prebuilt binary, sha256 matched to the GitHub release digest |
 
 ## Installed in Sprint 0 (dev tooling)
 
@@ -21,12 +22,12 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 | prettier                     | 3.9.9   | 2026-09-23 |
 | vitest / @vitest/coverage-v8 | 5.0.3   | 2026-09-30 |
 | @types/node (24)             | 24.19.0 | 2026-09-25 |
+| fast-check (S1)              | 4.10.2  | 2026-09-19 |
 
 ## Selected for later sprints (re-check age when installed)
 
 | Package                         | Version         | Published               | Sprint |
 | ------------------------------- | --------------- | ----------------------- | ------ |
-| fast-check                      | 4.10.2          | 2026-09-19              | S1     |
 | zod                             | 4.6.5           | 2026-09-13              | S2     |
 | pino                            | 10.3.1          | 2026-02-09              | S2     |
 | kysely                          | 0.29.6          | 2026-09-16              | S3     |

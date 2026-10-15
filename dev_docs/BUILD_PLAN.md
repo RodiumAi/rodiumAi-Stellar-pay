@@ -2,7 +2,7 @@
 
 Source of truth: `docs/context.md` (formerly `soroban-context.md`). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
 
-Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 0 in progress.**
+Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 1 in progress.**
 
 ---
 
@@ -458,20 +458,20 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contra
 
 ## 4. Sprint status tracker
 
-| Sprint               | Branch                      | Status      | Tag |
-| -------------------- | --------------------------- | ----------- | --- |
-| S0 Foundation        | `sprint/00-foundation`      | in progress | —   |
-| S1 Core              | `sprint/01-core-domain`     | not started | —   |
-| S2 Config + security | `sprint/02-config-security` | not started | —   |
-| S3 DB                | `sprint/03-db`              | not started | —   |
-| S4 Contract          | `sprint/04-contract`        | not started | —   |
-| S5 Stellar           | `sprint/05-stellar`         | not started | —   |
-| S6 API               | `sprint/06-api`             | not started | —   |
-| S7 Worker            | `sprint/07-worker-payments` | not started | —   |
-| S8 Checkout          | `sprint/08-checkout`        | not started | —   |
-| S9 Subscriptions     | `sprint/09-subscriptions`   | not started | —   |
-| S10 Hardening        | `sprint/10-hardening`       | not started | —   |
-| S11 Release          | `sprint/11-release`         | not started | —   |
+| Sprint               | Branch                      | Status       | Tag      |
+| -------------------- | --------------------------- | ------------ | -------- |
+| S0 Foundation        | `sprint/00-foundation`      | done (PR #1) | `v0.0.1` |
+| S1 Core              | `sprint/01-core-domain`     | in progress  | —        |
+| S2 Config + security | `sprint/02-config-security` | not started  | —        |
+| S3 DB                | `sprint/03-db`              | not started  | —        |
+| S4 Contract          | `sprint/04-contract`        | not started  | —        |
+| S5 Stellar           | `sprint/05-stellar`         | not started  | —        |
+| S6 API               | `sprint/06-api`             | not started  | —        |
+| S7 Worker            | `sprint/07-worker-payments` | not started  | —        |
+| S8 Checkout          | `sprint/08-checkout`        | not started  | —        |
+| S9 Subscriptions     | `sprint/09-subscriptions`   | not started  | —        |
+| S10 Hardening        | `sprint/10-hardening`       | not started  | —        |
+| S11 Release          | `sprint/11-release`         | not started  | —        |
 
 ---
 
