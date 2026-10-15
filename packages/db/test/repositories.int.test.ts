@@ -94,9 +94,11 @@ describe('payments', () => {
   });
 
   it('touches updated_at on update', async () => {
-    const p = await createPayment();
+    const longAgo = new Date('2020-01-01T00:00:00Z');
+    const p = await createPayment({ updated_at: longAgo });
+    expect(p.updated_at).toEqual(longAgo);
     const updated = await transitionPaymentStatus(worker, p.id, 'pending', 'expired');
-    expect(updated && updated.updated_at > p.updated_at).toBe(true);
+    expect(updated?.updated_at.getTime()).toBeGreaterThan(longAgo.getTime());
   });
 
   it.each([
