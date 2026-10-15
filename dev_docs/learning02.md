@@ -34,3 +34,28 @@ Free-tool results on the contract (plan §6)
 - cargo-fuzz target `charge_sequence` runs in CI (libFuzzer cannot build locally); its body was compiled and run on 300 random inputs locally without libFuzzer.
 - Komet deferred to S10: install requires Nix via `kup` (multi-GB, system-wide) — not done on this machine; run in CI in S10.
 - Details: `docs/security/contract-review.md`.
+
+### 2026-10-15 · S4 · tooling · bug
+
+stellar-cli reads the repo `.env`; our `STELLAR_*` names collided
+
+- What: every `stellar` command inside the repo failed: "rpc-url is used but network passphrase is missing".
+- Why: stellar-cli loads `.env` (dotenv, searching parent dirs) and owns `STELLAR_NETWORK`/`STELLAR_RPC_URL`; our empty `STELLAR_RPC_URL=` was read as a set RPC URL.
+- Fix: config vars renamed to `RP_STELLAR_NETWORK`, `RP_STELLAR_RPC_URL`, `RP_STELLAR_HORIZON_URL` (code, `.env.example`, user's `.env` keys only).
+- Prevent: never use `STELLAR_` for our own variables.
+
+### 2026-10-15 · S4 · contract · test-fail
+
+Local Quickstart e2e: friendbot needs Horizon; key aliases need `--overwrite`
+
+- What: funding loop timed out (friendbot HTTP 502) with `--enable core,rpc`; reruns hit "identity … already exists" (`keys rm` did not clear it).
+- Fix: Quickstart started with `core,rpc,horizon`; `keys generate --overwrite`; funding via friendbot with retries. First run's failure was hidden by piping to `tail` — always capture the exit code.
+- Verified: `scripts/contract/e2e-local.sh` → "E2E OK": subscribe (one signature: transfer + approve 3 periods), early and non-keeper charges refused, cancel; events `sub_created`, `canceled`.
+
+### 2026-10-15 · S4 · ci · ci-fail
+
+cargo-fuzz built for musl; OSV flagged `paste`
+
+- What: "sanitizer is incompatible with statically linked libc"; OSV: RUSTSEC-2024-0436 (2 lockfiles).
+- Why: the prebuilt cargo-fuzz binary defaults to its own musl target; OSV has no knowledge of the `cargo deny` ignore.
+- Fix: `--target x86_64-unknown-linux-gnu`; `contracts/osv-scanner.toml` + `contracts/fuzz/osv-scanner.toml` ignore with the same reason as `deny.toml`.

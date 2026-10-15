@@ -46,9 +46,9 @@ const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-    STELLAR_NETWORK: z.enum(['testnet', 'mainnet']),
-    STELLAR_RPC_URL: httpsUrl.optional(),
-    STELLAR_HORIZON_URL: httpsUrl.optional(),
+    RP_STELLAR_NETWORK: z.enum(['testnet', 'mainnet']),
+    RP_STELLAR_RPC_URL: httpsUrl.optional(),
+    RP_STELLAR_HORIZON_URL: httpsUrl.optional(),
     MERCHANT_ADDRESS: strkey('G'),
     SUBSCRIPTION_CONTRACT_ID: strkey('C'),
     MAX_FEE_STROOPS: z
@@ -66,10 +66,10 @@ const EnvSchema = z
     FX_MAX_RATE_AGE_SECONDS: z.coerce.number().int().min(60).max(172_800).default(93_600),
   })
   .superRefine((env, ctx) => {
-    if (env.STELLAR_NETWORK === 'mainnet' && env.STELLAR_RPC_URL === undefined) {
+    if (env.RP_STELLAR_NETWORK === 'mainnet' && env.RP_STELLAR_RPC_URL === undefined) {
       ctx.addIssue({
         code: 'custom',
-        path: ['STELLAR_RPC_URL'],
+        path: ['RP_STELLAR_RPC_URL'],
         message: 'required on mainnet (no public SDF RPC)',
       });
     }
@@ -87,10 +87,10 @@ export function loadConfig(
     });
   }
   const e = parsed.data;
-  const constants = networkConstants(e.STELLAR_NETWORK);
-  const rpcUrl = e.STELLAR_RPC_URL ?? constants.defaultRpcUrl;
+  const constants = networkConstants(e.RP_STELLAR_NETWORK);
+  const rpcUrl = e.RP_STELLAR_RPC_URL ?? constants.defaultRpcUrl;
   if (rpcUrl === null) {
-    return err({ code: 'invalid_config', issues: ['STELLAR_RPC_URL: required'] });
+    return err({ code: 'invalid_config', issues: ['RP_STELLAR_RPC_URL: required'] });
   }
   return ok({
     env: e.NODE_ENV,
@@ -99,7 +99,7 @@ export function loadConfig(
       name: constants.name,
       passphrase: constants.passphrase,
       rpcUrl,
-      horizonUrl: e.STELLAR_HORIZON_URL ?? constants.defaultHorizonUrl,
+      horizonUrl: e.RP_STELLAR_HORIZON_URL ?? constants.defaultHorizonUrl,
       usdc: constants.usdc,
       merchant: e.MERCHANT_ADDRESS as NetworkConfig['merchant'],
       subscriptionContractId: e.SUBSCRIPTION_CONTRACT_ID,

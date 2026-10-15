@@ -1,0 +1,5 @@
+# Mirrors contracts/deny.toml. Unmaintained (not a vulnerability) proc-macro pulled in by
+# soroban-env-host via ark-ff; host/test-only, absent from the wasm32v1-none build.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "transitive via soroban-env-host; not in contract WASM; re-check on SDK upgrades"

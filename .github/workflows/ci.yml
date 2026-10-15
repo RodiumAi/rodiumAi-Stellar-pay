@@ -94,7 +94,8 @@ jobs:
         with:
           tool: cargo-fuzz@0.13.2
       # Short smoke run per push; the ≥ 1 h run happens before each contract tag (plan §6).
-      - run: cargo +nightly-2025-09-18 fuzz run charge_sequence -- -max_total_time=120
+      # The prebuilt cargo-fuzz defaults to musl, which has no sanitizer support.
+      - run: cargo +nightly-2025-09-18 fuzz run charge_sequence --target x86_64-unknown-linux-gnu -- -max_total_time=120
 
   security-scan:
     runs-on: ubuntu-24.04
