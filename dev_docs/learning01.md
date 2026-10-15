@@ -3,6 +3,7 @@
 Running, chronological log of the whole build — not tied to one sprint. Read top to bottom to see what happened at each stage, what went wrong and why.
 
 **Rules**
+
 - Cap: **200 lines per file**. When the next entry would push past 200, write the hand-off summary at the bottom, then continue in the next file (`learning02.md`, then `learning03.md`, …). Never edit a full file except to fix a factual error.
 - Append only, newest at the bottom.
 - Tag every entry with the stage (`S0`–`S11`) and area so entries can be grepped: `grep "S3" dev_docs/learning*.md`.
@@ -30,17 +31,56 @@ Types: `bug` · `test-fail` · `ci-fail` · `decision` · `workaround` · `fact`
 ## Log
 
 ### 2026-10-15 · S0 · devdocs · decision
+
 Build plan drafted; GitHub practice adopted
+
 - What: Wrote `dev_docs/BUILD_PLAN.md` (12 layered sprints). Adopted trunk-based workflow: protected `main`, short-lived `sprint/NN-slug` branches, Conventional Commits, CI-gated PRs, `v0.N.0` tag per sprint.
 - Why: Sprints are layers, not features; main RodiumAI app is already deployed, so this service must stay isolated and reach the main app only behind a feature flag (S11).
 - Fix: Learning logs changed from per-sprint files to this rolling 200-line format.
 - Refs: `dev_docs/BUILD_PLAN.md` §1
 
 ### 2026-10-15 · S0 · devdocs · decision
+
 Open questions answered; paid audit replaced by free tooling
+
 - What: Solo developer, no calendar sprints; AWS hosting (teammate, later) → AWS KMS + Secrets Manager; FX = ExchangeRate-API; repo name stays `rodiumAi-Stellar-pay`; accounts still open.
 - Why: No budget for an external Soroban audit; one developer working continuously.
 - Fix: BUILD_PLAN §5 rewritten as decisions, new plan §6 (Scout, Komet, cargo-fuzz, optional Sunbeam, self-written `docs/security/contract-review.md`, exposure caps). Context §4, §6 Quote, §12, §14.4, §17 updated to match.
 - Verified: `open.er-api.com/v6/latest/USD` returned GHS 11.686603 (2026-10-15). Tool sources: developers.stellar.org/docs/tools/developer-tools/security-tools
 - Prevent: mainnet gated on plan §6 sign-off against the exact WASM hash.
 - Refs: `dev_docs/BUILD_PLAN.md` §5–§6
+
+### 2026-10-15 · S0 · tooling · fact
+
+Newest Node and pnpm were too fresh for the 14-day rule
+
+- What: Node 24.22.0 (2026-10-14) and pnpm 10.34.7 (2026-10-12) were the latest releases.
+- Why: §16.2 requires ≥ 14 days since publish to dodge compromised releases.
+- Fix: pinned Node 24.21.0 (`.nvmrc`, `engines`) and pnpm 10.34.6 (`packageManager`). All versions recorded in `docs/dependencies.md`.
+- Verified: nodejs.org/dist/index.json, `npm view <pkg> time`.
+
+### 2026-10-15 · S0 · tooling · workaround
+
+`brew install stellar-cli` fails on this Mac
+
+- What: Homebrew refused to build: outdated Command Line Tools, "You should download the Command Line Tools for Xcode 26.3." (Tier 3 config).
+- Why: stellar-cli builds from source under Homebrew; the CLT check blocks it.
+- Fix: `cargo install --locked stellar-cli` instead (official alternative). Only needed from S4.
+- Prevent: if cargo build also fails, update CLT via Software Update.
+
+### 2026-10-15 · S0 · lint · surprise
+
+ESLint 10 config quirks
+
+- What: `@eslint/js` has no v10 release (latest 9.39.5), so no `js.configs.recommended`. Root `vitest.config.ts` linted with "This rule requires the `strictNullChecks` compiler option".
+- Why: config files sit outside every package tsconfig, so the project service used default (non-strict) options.
+- Fix: rely on typescript-eslint strict/stylistic type-checked configs; `projectService.defaultProject = tsconfig.tools.json` (strict) for root `*.config.ts`, also type-checked in `pnpm typecheck`.
+- Verified: a file using `any`, default export, `Math.random`, `rejectUnauthorized: false` produces 7 lint errors.
+
+### 2026-10-15 · S0 · ci · decision
+
+Contract checks run only when `contracts/` changes locally
+
+- What: `scripts/verify-contracts.sh` skips Rust when `contracts/` is unchanged vs `origin/main` (`FORCE_CONTRACTS=1` overrides); CI `contract` job always runs.
+- Why: keep TypeScript-only pre-push fast without weakening CI.
+- Refs: `.githooks/pre-push`, `.github/workflows/ci.yml`
