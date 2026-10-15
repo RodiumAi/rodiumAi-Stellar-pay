@@ -103,7 +103,7 @@ rodiumAi-Stellar-pay/
 ├── contracts/
 │   └── subscription/   Soroban contract (Rust)
 ├── infra/
-│   ├── supabase/       roles.sql, settings checklist, per-environment project refs
+│   ├── supabase/       bootstrap-roles.sql, settings checklist, per-environment project refs
 │   ├── upstash/        database settings checklist
 │   ├── docker/         Dockerfiles (distroless, non-root)
 │   └── k8s/            manifests, network policies, pod security

@@ -19,7 +19,7 @@ export interface RolePasswords {
   readonly readonly: string;
 }
 
-/** Runs infra/supabase/roles.sql as the Supabase `postgres` role (context §7.3). */
+/** Runs infra/supabase/bootstrap-roles.sql as the Supabase `postgres` role (context §7.3). */
 export async function bootstrapRoles(
   admin: pg.ClientBase,
   rolesSql: string,

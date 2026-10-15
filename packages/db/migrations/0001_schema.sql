@@ -1,4 +1,4 @@
--- Context §7.1. Applied by rp_owner; the schema itself is created by infra/supabase/roles.sql.
+-- Context §7.1. Applied by rp_owner; the schema itself is created by infra/supabase/bootstrap-roles.sql.
 SET LOCAL search_path = pay;
 
 CREATE TYPE payment_status AS ENUM
