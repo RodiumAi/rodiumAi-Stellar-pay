@@ -1,0 +1,6 @@
+# Security-critical paths. Documentation only while the team is one developer;
+# enable "Require review from Code Owners" when a second engineer joins.
+/contracts/            @Joshua-OA
+/packages/security/    @Joshua-OA
+/apps/signer/          @Joshua-OA
+/infra/                @Joshua-OA
