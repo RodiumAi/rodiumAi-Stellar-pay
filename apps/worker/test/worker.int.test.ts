@@ -14,6 +14,7 @@ import { db, newId, newPayment, pool } from '../../../packages/db/test/fixtures.
 import { createDispatchJob } from '../src/jobs/dispatch.js';
 import { createExpireJob } from '../src/jobs/expire.js';
 import { createIngestJob, createReconcileJob, processPage } from '../src/jobs/ingest.js';
+import { createStatsJob } from '../src/jobs/stats.js';
 import { createMetrics } from '../src/metrics.js';
 
 const worker = db('worker', 10);
@@ -419,6 +420,22 @@ describe('webhook dispatch (context §10)', () => {
     const mine = received.filter((d) => ids.includes(String(d.headers['rp-event-id'])));
     expect(mine).toHaveLength(4);
     expect(new Set(mine.map((d) => d.headers['rp-event-id'])).size).toBe(4);
+  });
+});
+
+describe('stats (context §18)', () => {
+  it('exports database-wide counts and the certificate expiry', async () => {
+    const metrics = createMetrics();
+    const job = createStatsJob({ db: worker, metrics, certNotAfter: () => 1_900_000_000 });
+    await job.run(never);
+    const before = metrics.get('payments_created_total');
+    await insertPayment(worker, newPayment({ destination: merchant }));
+    await job.run(never);
+    expect(metrics.get('payments_created_total')).toBe(before + 1);
+    expect(metrics.get('payments_confirmed_total')).toBeGreaterThanOrEqual(0);
+    expect(metrics.get('outbox_pending')).toBeGreaterThanOrEqual(0);
+    expect(metrics.get('mtls_cert_not_after_timestamp_seconds')).toBe(1_900_000_000);
+    expect(metrics.render()).toContain('receipts_unmatched_open ');
   });
 });
 

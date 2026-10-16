@@ -43,7 +43,7 @@ export function createDispatchJob(deps: DispatchDeps, intervalMs = 5_000): Job {
         }
         const next = nextAttemptAt(event.attempts + 1, deps.now(), deps.randomBytes);
         await markAttemptFailed(deps.db, event.id, { error: result.error, nextAttemptAt: next });
-        deps.metrics.inc('webhooks_failed_total');
+        deps.metrics.inc('webhook_delivery_failures_total');
         if (next === null) {
           deps.logger.warn(
             { alert: 'webhook_dead', event_id: event.id, type: event.event_type },
