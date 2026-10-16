@@ -37,6 +37,17 @@ function candidate(p: ObservedPayment, amount: bigint, memo: string | null): Rec
   };
 }
 
+/** Cursor value meaning "start at this ledger" before the provider has issued a cursor. */
+const LEDGER_PREFIX = 'ledger:';
+
+function positionOf(
+  cursor: string,
+): { readonly cursor: string } | { readonly startLedger: number } {
+  return cursor.startsWith(LEDGER_PREFIX)
+    ? { startLedger: Number(cursor.slice(LEDGER_PREFIX.length)) }
+    : { cursor };
+}
+
 export interface PageStats {
   readonly applied: number;
   readonly unmatched: number;
@@ -92,7 +103,9 @@ export async function processPage(
       else if (outcome.kind === 'unmatched') stats.unmatched += 1;
       else stats.applied += 1;
     }
-    if (cursorName !== null && page.payments.length > 0) {
+    const inputCursor = 'cursor' in position ? position.cursor : null;
+    // Persist on any progress: receipts, or a provider cursor that advanced over empty ledgers.
+    if (cursorName !== null && (page.payments.length > 0 || page.cursor !== inputCursor)) {
       const previous = await getCursor(tx, cursorName);
       await saveCursor(tx, cursorName, {
         cursor: page.cursor,
@@ -147,18 +160,33 @@ export function createIngestJob(
     return lock !== null;
   };
 
+  /**
+   * First run: pin the starting point and persist it immediately. Re-asking the provider
+   * for "now" on every pass would skip payments that land between two passes.
+   */
+  const startingPosition = async (): Promise<void> => {
+    const start =
+      deps.startLedger ?? (await deps.source.fetchPayments({ cursor: 'now' }, 1)).latestLedger;
+    await saveCursor(deps.db, cursorName, {
+      cursor: `${LEDGER_PREFIX}${String(start)}`,
+      ledger: start,
+    });
+    deps.logger.info({ start_ledger: start }, 'ingest cursor initialised');
+  };
+
   return {
     name: 'ingest',
     intervalMs,
     async run(signal) {
       if (!(await ensureLeader())) return;
       for (let i = 0; i < (deps.maxPagesPerPass ?? 20) && !signal.aborted; i++) {
-        const saved = await getCursor(deps.db, cursorName);
-        const position = saved
-          ? { cursor: saved.cursor }
-          : deps.startLedger === null
-            ? { cursor: 'now' }
-            : { startLedger: deps.startLedger };
+        let saved = await getCursor(deps.db, cursorName);
+        if (saved === undefined) {
+          await startingPosition();
+          saved = await getCursor(deps.db, cursorName);
+          if (saved === undefined) return;
+        }
+        const position = positionOf(saved.cursor);
         const stats = await processPage(
           deps.db,
           deps.source,
@@ -168,7 +196,7 @@ export function createIngestJob(
           cursorName,
           deps.logger,
         );
-        const processed = stats.lastLedger ?? saved?.ledger ?? stats.latestLedger;
+        const processed = stats.lastLedger ?? saved.ledger;
         deps.metrics.set('ingest_lag_ledgers', Math.max(0, stats.latestLedger - processed));
         deps.metrics.inc('receipts_applied_total', stats.applied);
         deps.metrics.inc('receipts_unmatched_total', stats.unmatched);
