@@ -7,7 +7,9 @@ import { createLogger } from '@rp/security/logger';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { sql } from 'kysely';
+import { fileURLToPath } from 'node:url';
 import { loadApiConfig } from './api-config.js';
+import { loadCheckoutAssets } from './checkout/routes.js';
 import { createExchangeRateApi } from './fx.js';
 import { createUpstashKv } from './kv.js';
 import { createInProcessLimiter, createUpstashLimiter } from './rate-limit.js';
@@ -85,24 +87,33 @@ async function main(): Promise<void> {
     },
   });
 
-  const server = buildServer({
-    app: app.value,
-    api: api.value,
-    db,
-    kv,
-    rateLimiter,
-    fx,
-    keyring,
-    randomBytes: cryptoRandomBytes,
-    now: () => new Date(),
-    logger,
-    health: {
-      database: async () => (await sql`select 1 as ok`.execute(db)).rows.length === 1,
-      redis: () => kv.ping(),
-      ledger: async () =>
-        (await fetch(app.value.network.horizonUrl, { signal: AbortSignal.timeout(2000) })).ok,
+  // Built by `pnpm --filter @rp/checkout build`; overridable for container layouts.
+  const assetsDir =
+    process.env['CHECKOUT_ASSETS_DIR'] ??
+    fileURLToPath(new URL('../../checkout/dist', import.meta.url));
+  const checkout = { assets: loadCheckoutAssets(assetsDir), horizonFetch: fetch };
+
+  const server = buildServer(
+    {
+      app: app.value,
+      api: api.value,
+      db,
+      kv,
+      rateLimiter,
+      fx,
+      keyring,
+      randomBytes: cryptoRandomBytes,
+      now: () => new Date(),
+      logger,
+      health: {
+        database: async () => (await sql`select 1 as ok`.execute(db)).rows.length === 1,
+        redis: () => kv.ping(),
+        ledger: async () =>
+          (await fetch(app.value.network.horizonUrl, { signal: AbortSignal.timeout(2000) })).ok,
+      },
     },
-  });
+    checkout,
+  );
 
   const shutdown = (signal: string): void => {
     logger.info({ signal }, 'shutting down');

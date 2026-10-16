@@ -28,6 +28,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm audit --audit-level high
+      - run: pnpm checkout:build
 
   db-integration:
     runs-on: ubuntu-24.04

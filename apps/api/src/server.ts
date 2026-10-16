@@ -4,9 +4,10 @@ import { instant } from '@rp/core/time';
 import { uuidV7 } from '@rp/core/uuid-v7';
 import { verifyRequest } from '@rp/security/hmac-auth';
 import { redactCheckoutPath } from '@rp/security/logger';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { LogController, type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { ApiDeps } from './deps.js';
 import { ApiError, errorBody } from './errors.js';
+import { registerCheckoutRoutes, type CheckoutDeps } from './checkout/routes.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerPaymentRoutes } from './routes/payments.js';
 import { registerSubscriptionRoutes } from './routes/subscriptions.js';
@@ -26,13 +27,16 @@ const header = (req: FastifyRequest, name: string): string | undefined => {
   return typeof value === 'string' ? value : undefined;
 };
 
-export function buildServer(deps: ApiDeps): FastifyInstance {
+export function buildServer(deps: ApiDeps, checkout?: CheckoutDeps): FastifyInstance {
   const app = Fastify({
     loggerInstance: deps.logger,
     bodyLimit: BODY_LIMIT_BYTES,
     genReqId: () => uuidV7(instant(Date.now()), cryptoRandomBytes),
-    requestIdLogLabel: 'trace_id',
-    disableRequestLogging: true,
+    // We log one redacted line per request in onResponse instead of Fastify's defaults.
+    logController: new LogController({
+      requestIdLogLabel: 'trace_id',
+      disableRequestLogging: true,
+    }),
   });
 
   void app.register(helmet, { global: true });
@@ -131,5 +135,6 @@ export function buildServer(deps: ApiDeps): FastifyInstance {
   registerHealthRoutes(app, deps);
   registerPaymentRoutes(app, deps);
   registerSubscriptionRoutes(app, deps);
+  if (checkout !== undefined) registerCheckoutRoutes(app, deps, checkout);
   return app;
 }

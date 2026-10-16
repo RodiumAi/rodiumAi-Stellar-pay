@@ -13,6 +13,9 @@ export type ErrorCode =
   | 'invalid_return_url'
   | 'unknown_plan'
   | 'invalid_state'
+  | 'invalid_transaction'
+  | 'already_submitted'
+  | 'submit_failed'
   | 'rate_limited'
   | 'fx_unavailable'
   | 'service_unavailable'
@@ -28,6 +31,9 @@ const STATUS: ReadonlyMap<ErrorCode, number> = new Map<ErrorCode, number>([
   ['not_found', 404],
   ['idempotency_conflict', 409],
   ['invalid_state', 409],
+  ['already_submitted', 409],
+  ['invalid_transaction', 422],
+  ['submit_failed', 422],
   ['payload_too_large', 413],
   ['unsupported_media_type', 415],
   ['unsupported_currency', 422],

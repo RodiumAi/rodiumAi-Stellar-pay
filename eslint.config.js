@@ -22,7 +22,7 @@ const randomRestriction = {
 const moneyMessage = 'Money is bigint stroops only; no floating point (context §5 Money).';
 
 export default defineConfig(
-  globalIgnores(['**/dist/', '**/coverage/', '**/node_modules/', 'contracts/']),
+  globalIgnores(['**/dist/', '**/dist-types/', '**/coverage/', '**/node_modules/', 'contracts/']),
   {
     files: ['**/*.ts'],
     extends: [
@@ -33,7 +33,7 @@ export default defineConfig(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.config.ts'],
+          allowDefaultProject: ['*.config.ts', 'apps/*/vite.config.ts'],
           defaultProject: 'tsconfig.tools.json',
         },
         tsconfigRootDir: import.meta.dirname,
@@ -72,7 +72,7 @@ export default defineConfig(
   },
   {
     // Tool configs and vitest global setup are loaded by their tools via default export.
-    files: ['*.config.ts', '*.config.js', '**/test/global-setup.ts'],
+    files: ['*.config.ts', '*.config.js', '**/vite.config.ts', '**/test/global-setup.ts'],
     rules: {
       'no-restricted-syntax': 'off',
     },
