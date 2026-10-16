@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { formatAmount, stroops, type Stroops } from '@rp/core/money/stroops';
 import { parseStellarAddress } from '@rp/core/stellar-address';
 import { findPaymentByTokenHash } from '@rp/db/payments';
-import type { PaymentRow } from '@rp/db/schema';
+import { findSubscriptionByTokenHash } from '@rp/db/subscriptions';
+import type { PaymentRow, SubscriptionRow } from '@rp/db/schema';
 import { hashCheckoutToken } from '@rp/security/tokens';
 import { buildPayUri } from '@rp/stellar/sep7';
 import { guardPaymentTransaction } from '@rp/stellar/xdr-guards';
@@ -16,6 +17,13 @@ import { ApiError } from '../errors.js';
 import { parseBody } from '../request.js';
 import { applyCheckoutHeaders, newNonce } from './headers.js';
 import { renderPaymentPage, type PageAssets } from './page.js';
+import {
+  prepareSubscription,
+  renderSubscriptionPage,
+  submitSubscription,
+  subscriptionStatusBody,
+  type SubscriptionChainClient,
+} from './subscription-checkout.js';
 
 /** Context §11.2: a token is valid for 24 h after creation. */
 const TOKEN_LIFETIME_MS = 24 * 3600 * 1000;
@@ -72,10 +80,22 @@ function remaining(p: PaymentRow): Stroops {
   return left.ok ? left.value : (0n as Stroops);
 }
 
+function paymentStatusBody(payment: PaymentRow): string {
+  return JSON.stringify({
+    status: payment.status,
+    final: FINAL.has(payment.status),
+    amount_due: formatAmount(payment.amount_due_stroops as Stroops),
+    amount_received: formatAmount(payment.amount_received_stroops as Stroops),
+    return_url: FINAL.has(payment.status) ? payment.return_url : null,
+  });
+}
+
 export interface CheckoutDeps {
   readonly assets: { readonly page: PageAssets; readonly files: ReadonlyMap<string, Buffer> };
   /** Horizon base URL used to load sequence numbers and submit (browser never talks to Stellar). */
   readonly horizonFetch: typeof fetch;
+  /** Soroban RPC for the subscription flow (simulate, submit, wait). */
+  readonly soroban: SubscriptionChainClient;
 }
 
 export function registerCheckoutRoutes(
@@ -87,19 +107,26 @@ export function registerCheckoutRoutes(
   const horizon = network.horizonUrl.replace(/\/+$/, '');
 
   /** Resolves a token to a payment that is within its 24 h lifetime; anything else is 404. */
-  const lookup = async (req: FastifyRequest): Promise<PaymentRow> => {
+  type Found =
+    | { readonly kind: 'payment'; readonly row: PaymentRow }
+    | { readonly kind: 'subscription'; readonly row: SubscriptionRow };
+
+  /** Resolves a token to a payment or subscription within its 24 h lifetime; else 404. */
+  const find = async (req: FastifyRequest): Promise<Found> => {
     const params = Token.safeParse(req.params);
     if (!params.success) throw notFound();
     const hash = hashCheckoutToken(params.data.token);
     if (!hash) throw notFound();
+    const fresh = (createdAt: Date): boolean =>
+      deps.now().getTime() - createdAt.getTime() <= TOKEN_LIFETIME_MS;
     const payment = await findPaymentByTokenHash(deps.db, hash);
-    if (
-      payment === undefined ||
-      deps.now().getTime() - payment.created_at.getTime() > TOKEN_LIFETIME_MS
-    ) {
-      throw notFound();
+    if (payment !== undefined) {
+      if (!fresh(payment.created_at)) throw notFound();
+      return { kind: 'payment', row: payment };
     }
-    return payment;
+    const subscription = await findSubscriptionByTokenHash(deps.db, hash);
+    if (subscription === undefined || !fresh(subscription.created_at)) throw notFound();
+    return { kind: 'subscription', row: subscription };
   };
 
   const rateLimit = async (req: FastifyRequest): Promise<void> => {
@@ -118,7 +145,35 @@ export function registerCheckoutRoutes(
     });
 
     scope.get('/c/:token', async (req, reply) => {
-      const payment = await lookup(req);
+      const found = await find(req);
+      if (found.kind === 'subscription') {
+        const sub = found.row;
+        if (sub.status !== 'incomplete') throw notFound();
+        const nonce = newNonce();
+        applyCheckoutHeaders(reply, nonce);
+        const { token } = req.params as { token: string };
+        return reply.type('text/html; charset=utf-8').send(
+          renderSubscriptionPage({
+            nonce,
+            assets: checkout.assets.page,
+            planCode: sub.plan_code,
+            price: formatAmount(sub.price_stroops as Stroops),
+            intervalSeconds: sub.interval_seconds,
+            periods: deps.app.limits.subscriptionApprovePeriods,
+            contractId: network.subscriptionContractId,
+            networkName: network.name === 'mainnet' ? 'Stellar' : `Stellar ${network.name}`,
+            data: {
+              kind: 'subscription',
+              status: sub.status,
+              networkPassphrase: network.passphrase,
+              statusUrl: `/c/${token}/status`,
+              prepareUrl: `/c/${token}/prepare`,
+              submitUrl: `/c/${token}/submit`,
+            },
+          }),
+        );
+      }
+      const payment = found.row;
       // A final payment has nothing left to pay (§11.2); the status endpoint still answers.
       if (!OPEN.has(payment.status)) throw notFound();
       const nonce = newNonce();
@@ -161,8 +216,8 @@ export function registerCheckoutRoutes(
     });
 
     scope.get('/c/:token/status', async (req, reply) => {
-      const payment = await lookup(req);
-      const cacheKey = `rp:status:${payment.id}`;
+      const found = await find(req);
+      const cacheKey = `rp:status:${found.row.id}`;
       let body: string | null = null;
       try {
         body = await deps.kv.get(cacheKey);
@@ -170,13 +225,10 @@ export function registerCheckoutRoutes(
         // Cache down: read Postgres (fail open, §8.2).
       }
       if (body === null) {
-        body = JSON.stringify({
-          status: payment.status,
-          final: FINAL.has(payment.status),
-          amount_due: formatAmount(payment.amount_due_stroops as Stroops),
-          amount_received: formatAmount(payment.amount_received_stroops as Stroops),
-          return_url: FINAL.has(payment.status) ? payment.return_url : null,
-        });
+        body =
+          found.kind === 'subscription'
+            ? subscriptionStatusBody(found.row)
+            : paymentStatusBody(found.row);
         await deps.kv.set(cacheKey, body, STATUS_CACHE_SECONDS).catch(() => undefined);
       }
       const etag = `"${createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`;
@@ -186,7 +238,13 @@ export function registerCheckoutRoutes(
     });
 
     scope.post('/c/:token/prepare', async (req, reply) => {
-      const payment = await lookup(req);
+      const found = await find(req);
+      if (found.kind === 'subscription') {
+        if (found.row.status !== 'incomplete')
+          throw new ApiError('invalid_state', 'This subscription is already set up');
+        return reply.send(await prepareSubscription(deps, checkout.soroban, found.row, req));
+      }
+      const payment = found.row;
       if (!OPEN.has(payment.status))
         throw new ApiError('invalid_state', 'This payment is no longer open');
       const { address } = parseBody(req, PrepareBody);
@@ -224,7 +282,13 @@ export function registerCheckoutRoutes(
     });
 
     scope.post('/c/:token/submit', async (req, reply: FastifyReply) => {
-      const payment = await lookup(req);
+      const found = await find(req);
+      if (found.kind === 'subscription') {
+        if (found.row.status !== 'incomplete')
+          throw new ApiError('invalid_state', 'This subscription is already set up');
+        return submitSubscription(deps, checkout.soroban, found.row, req, reply);
+      }
+      const payment = found.row;
       if (!OPEN.has(payment.status))
         throw new ApiError('invalid_state', 'This payment is no longer open');
       const { xdr } = parseBody(req, SubmitBody);

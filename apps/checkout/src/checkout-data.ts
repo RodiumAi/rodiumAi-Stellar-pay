@@ -1,6 +1,6 @@
 /** Server-rendered page data (`<script type="application/json" id="rp-checkout">`). */
 export interface CheckoutData {
-  readonly kind: 'payment';
+  readonly kind: 'payment' | 'subscription';
   readonly status: string;
   readonly networkPassphrase: string;
   readonly statusUrl: string;

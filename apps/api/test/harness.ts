@@ -35,6 +35,7 @@ export const appConfig: AppConfig = {
     merchant: `G${'M'.repeat(55)}` as StellarAddress,
     subscriptionContractId: `C${'S'.repeat(55)}`,
     maxFeeStroops: 100_000n,
+    maxSorobanFeeStroops: 20_000_000n,
   },
   limits: {
     maxPayment: 5_000_000_000n as Stroops,
