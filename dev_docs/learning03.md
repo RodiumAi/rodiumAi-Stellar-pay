@@ -10,7 +10,7 @@ Cap: 200 lines. When full, write a hand-off summary and continue in `learning04.
 
 Read in order: this section → hand-off at the bottom of `learning02.md` → `dev_docs/BUILD_PLAN.md` (current sprint) → the `docs/context.md` sections it cites. Or run `/resume`.
 
-**State (2026-10-16):** S0–S8 merged and tagged `v0.0.1`…`v0.8.0`. **Sprint 9 (subscriptions end to end + signer)** in progress on `sprint/09-subscriptions`. Then S10 (hardening/infra — teammate owns AWS; Supabase credentials needed), S11 (main-app adapter + RC).
+**State (2026-10-16):** S0–S9 merged and tagged `v0.0.1`…`v0.9.0`. **Sprint 10 (hardening, infra & observability)** in progress on `sprint/10-hardening`. Then S11 (main-app adapter + RC). AWS hosting is owned by a teammate: this repo provides adapters, manifests and checklists; Supabase cloud credentials come from the user when needed.
 
 **How to work (user preferences):**
 
@@ -26,9 +26,9 @@ Read in order: this section → hand-off at the bottom of `learning02.md` → `d
 - Local stack: `pnpm db:start && pnpm db:setup` (dev DB `rodium_pay_dev`); `pnpm build:all`; `pnpm api:start` / worker `node --env-file=.env apps/worker/dist/main.js`; `pnpm api:call METHOD PATH [json]`; `pnpm e2e:testnet` (needs ports 3000/8080/9090 free).
 - Tests: `pnpm verify` (pre-push), `pnpm test:int` (DB, serial), `pnpm test:redis` (`pnpm redis:start`), `pnpm stellar:start && pnpm test:stellar && pnpm test:e2e`, contracts via `FORCE_CONTRACTS=1 ./scripts/verify-contracts.sh`.
 
-**`.env`:** complete for local dev + testnet (Upstash, ExchangeRate-API, keys, testnet merchant `rp_testnet_merchant` with USDC trustline). Missing: `SUBSCRIPTION_CONTRACT_ID` (S9 testnet deploy) and Supabase cloud URLs (S10).
+**`.env`:** complete for local dev + testnet (Upstash, ExchangeRate-API, keys, testnet merchant `rp_testnet_merchant` with USDC trustline). Also holds the S9 subscription settings (`SUBSCRIPTION_CONTRACT_ID` = E2E contract `CCREU5CN…GSFK`, `SUBSCRIPTION_PLANS`, signer/worker mTLS paths in `.mtls/` from `scripts/dev-mtls.sh`, `KEEPER_ADDRESS`, `KEEPER_SECRET`). Missing: Supabase cloud URLs (S10).
 
-**Sprint 9 starting notes:** signer = mTLS-only, one operation, reuses `guardKeeperTransaction` (S5); evaluate Node `--permission`. Checkout subscribe flow reuses `buildSubscribeTransaction` + `guardSubscribeTransaction`. Worker jobs: charge (simulate → signer → submit → record), allowance warnings (14 d), TTL extension, keeper balance; contract events via RPC (`parseSubscriptionEvent`). Core state machine `transitionSubscription` already handles retries/no back-charging. Deploy the contract to testnet with `scripts/contract/deploy.sh` and fill `SUBSCRIPTION_CONTRACT_ID`.
+**Sprint 10 starting notes:** Komet + optional Sunbeam deferred here from S4. Local-first order: Dockerfiles (distroless, non-root, read-only, no shell) + Trivy; k8s manifests with default-deny network policies (signer reachable only from worker); AWS KMS adapter behind the existing KMS interface + Secrets Manager wiring; OpenTelemetry + §18 metrics/alerts; SBOM/cosign/SLSA in CI; backup scripts (`age` pg_dump) + restore drill (needs Supabase); §20 runbooks; `infra/upstash/` checklist; contract review pass 2. Disk is tight — build images one at a time and prune. Subscription testnet E2E: `pnpm build:all && pnpm e2e:testnet:subscriptions`.
 
 ---
 
