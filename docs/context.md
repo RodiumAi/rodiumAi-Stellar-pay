@@ -479,7 +479,7 @@ Table privileges, not policies, decide what each role can do; the policies only 
 
 - **Point-in-time recovery add-on enabled** on production, on top of Supabase's daily backups.
 - A weekly logical export (`pg_dump` of the `pay` schema) is encrypted with `age` using a key held outside Supabase and stored in separate object storage, so recovery does not depend on one vendor account.
-- A restore drill into a scratch Supabase project runs monthly and is recorded in `docs/runbooks/restore.md`.
+- A restore drill into a scratch Supabase project runs monthly and is recorded in `docs/runbooks/database-restore.md`.
 
 ---
 
