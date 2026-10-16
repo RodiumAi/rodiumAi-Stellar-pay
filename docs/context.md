@@ -71,7 +71,7 @@ Use the **latest stable release of each major listed, pinned to an exact version
 **Checkout frontend**
 
 - Vite, vanilla TypeScript, no UI framework
-- Stellar Wallets Kit, loaded lazily only when the user clicks "Connect wallet"
+- ~~Stellar Wallets Kit~~ → **Freighter via `@stellar/freighter-api`** (2 deps, ~98 KB), loaded lazily only on click, plus the SEP-7 QR / `web+stellar:pay` link for mobile wallets (LOBSTR, xBull, …). Changed in S8: the kit 2.7.0 pulls ~234 packages / 481 MB (WalletConnect/Reown, Ledger, Trezor beta, runtime CSS injection via twind) — at odds with §16.2 minimal dependencies and the §11.3 CSP (`style-src 'self'`, WalletConnect out of scope). More wallets can be added one module at a time.
 - QR codes rendered server-side as inline SVG
 
 **Data**
@@ -642,7 +642,7 @@ Served at `pay.<domain>` by the API process from a static Vite build. The page i
 One-time payment:
 
 1. `GET /c/{token}` renders the page server-side with amount, memo, a SEP-7 `web+stellar:pay` URI and its QR code as inline SVG.
-2. "Pay with wallet" lazily imports the wallet kit, the user connects and signs.
+2. "Pay with Freighter" lazily imports the Freighter module; the user connects, the server builds the exact payment for that address (`POST /c/{token}/prepare`, sequence from Horizon), and the user signs. Mobile wallets pay from the QR / SEP-7 link instead; the ingester matches them by memo.
 3. The browser posts the signed XDR to `POST /c/{token}/submit`. The server validates it (§13.3) and submits it to the network. The browser never talks to Stellar infrastructure directly.
 4. The page polls `GET /c/{token}/status` (ETag, backoff from 3s to 15s) and redirects to `return_url` on a final state.
 
@@ -914,7 +914,7 @@ Things that change over time. Verify each against official sources when implemen
 - Circle's USDC issuer and SAC contract ID for testnet and mainnet.
 - Current SDF guidance on Horizon versus RPC for payment ingestion, and the chosen provider's retention window.
 - The network's current maximum entry TTL and fee settings.
-- Which wallets in Stellar Wallets Kit support signing Soroban invocations; list supported wallets on the checkout page accordingly.
+- Which wallets support signing (and Soroban invocations) — S8: Freighter (extension; `signTransaction`, Soroban-capable) at launch; SEP-7 for mobile wallets. Re-check before adding more.
 - Latest stable versions of every dependency in §3, respecting the 14-day age rule.
 - The Postgres major version of each Supabase project, and that local development uses the same major.
 - Supavisor's current ports, username format and prepared-statement support in transaction mode.
