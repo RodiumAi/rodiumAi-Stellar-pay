@@ -68,3 +68,34 @@ Sprint 4 merged (`v0.4.0`); local `.env` completed
 - `pnpm db:setup` creates `rodium_pay_dev` with the `.env` role passwords and fills `DATABASE_URL_*`; integration tests now reuse those passwords (roles are cluster-wide — random test passwords would lock the dev DB out).
 - Long fuzz: nightly 1 h workflow instead of "before each tag" (tags follow merges; nightly on `main` covers it).
 - Disk: ~10 GB free after removing the Quickstart image (re-pulled by `e2e-local.sh`).
+
+### 2026-10-15 · S5 · stellar · decision
+
+Horizon default for payments; RPC maintained; contract events via RPC
+
+- What: `LedgerSource` with Horizon (`/accounts/{merchant}/payments?join=transactions`) and RPC (CAP-67 `transfer` events on the USDC SAC + `getTransaction` for memo) implementations, shared `classifyPayment`.
+- Why: SDF points to RPC and its testnet RPC emits classic events, but retention is ~3 h (Horizon ~1 y). Losing payments in a long outage is the worse failure. Recorded in context §13.4.
+- Verified: Quickstart integration — a real 19.99 USDC payment with memo is seen and classified `eligible` by **both** sources; passphrase check passes/fails correctly.
+
+### 2026-10-15 · S5 · stellar · surprise
+
+stellar-sdk 17 rewrote the XDR layer
+
+- What: `.toXDR()`/`fromXDR` deprecated (`toXdr`/`fromXdr`); XDR unions are classes discriminated by `type` with properties (`env.v1.tx.ext.sorobanData`) instead of `switch()`/method calls; `tx.hash()` returns `Uint8Array`; operations typed as `OperationRecord`.
+- Fix: guards written against the new API; read generated `.d.ts` under `lib/esm/xdr/generated` rather than relying on pre-17 knowledge.
+
+### 2026-10-15 · S5 · security · decision
+
+XDR guards (context §13.3) + keeper footprint restriction
+
+- Payment/subscribe guards require a valid source-account signature over the hash for _our_ passphrase — that is how "network matches" is enforced (the passphrase is not in the envelope). Fee bumps rejected.
+- Keeper guard additionally restricts `extendFootprintTtl` to read-only keys of our contract (+ code), otherwise a compromised worker could make the keeper pay to extend arbitrary entries.
+- Verified: bypass suite — 53 cases incl. wrong network, unsigned, extra op, same-code-other-issuer, ±1 stroop, memo case, time bounds 301 s, fee +1, fee bump, foreign footprint.
+
+### 2026-10-15 · S5 · test · test-fail
+
+Quickstart Horizon lags core after start
+
+- What: "Service Unavailable" then "Not Found" from `loadAccount` right after start, although RPC and friendbot were up.
+- Why: Horizon ingests behind core (history_latest_ledger stayed 0 for a while on the 2 GB VM).
+- Fix: start script waits for `history_latest_ledger ≥ 1`; test retries account loads (90 s). Two consecutive green reruns.
