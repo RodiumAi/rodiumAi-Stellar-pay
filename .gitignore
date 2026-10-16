@@ -51,3 +51,6 @@ apps/checkout/dist-types/
 .mtls/
 infra/observability/rules.yaml
 .drill.*/
+
+# Supabase CA certificate and local Supabase files
+.supabase/
