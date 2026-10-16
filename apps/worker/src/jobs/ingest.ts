@@ -1,0 +1,236 @@
+import { cryptoRandomBytes } from '@rp/core/random';
+import { instant } from '@rp/core/time';
+import { uuidV7 } from '@rp/core/uuid-v7';
+import type { Db } from '@rp/db/connection';
+import { getCursor, saveCursor } from '@rp/db/cursors';
+import { tryAcquireLeaderLock, type LeaderLock } from '@rp/db/leader-lock';
+import {
+  applyPaymentReceipt,
+  storeUnmatchedReceipt,
+  type ReceiptCandidate,
+} from '@rp/db/payment-receipts';
+import type { LedgerSource } from '@rp/stellar/ledger-source';
+import {
+  classifyPayment,
+  type MatchingRules,
+  type ObservedPayment,
+} from '@rp/stellar/observed-payment';
+import type pg from 'pg';
+import type { Metrics } from '../metrics.js';
+import type { Job, JobLogger } from '../scheduler.js';
+
+const newId = (): string => uuidV7(instant(Date.now()), cryptoRandomBytes);
+
+function candidate(p: ObservedPayment, amount: bigint, memo: string | null): ReceiptCandidate {
+  return {
+    id: newId(),
+    txHash: Buffer.from(p.txHash, 'hex'),
+    itemIndex: p.itemIndex,
+    ledger: p.ledger,
+    ledgerClosedAt: p.ledgerClosedAt,
+    sourceAddress: p.from,
+    destination: p.to,
+    assetCode: p.asset?.code ?? 'XLM',
+    assetIssuer: p.asset?.issuer ?? 'native',
+    amount,
+    memo,
+  };
+}
+
+export interface PageStats {
+  readonly applied: number;
+  readonly unmatched: number;
+  readonly duplicates: number;
+  readonly ignored: number;
+  readonly cursor: string;
+  readonly lastLedger: number | null;
+  readonly latestLedger: number;
+  readonly empty: boolean;
+}
+
+/**
+ * Fetches one page (network, outside any transaction) and writes every receipt plus the
+ * new cursor in ONE transaction, so a crash can neither skip nor double-count (§13.4).
+ * `cursorName: null` re-scans without moving the ingest cursor (reconciliation).
+ */
+export async function processPage(
+  db: Db,
+  source: LedgerSource,
+  rules: MatchingRules,
+  position: { readonly cursor: string } | { readonly startLedger: number },
+  limit: number,
+  cursorName: string | null,
+  logger: JobLogger,
+): Promise<PageStats> {
+  const page = await source.fetchPayments(position, limit);
+  const stats = { applied: 0, unmatched: 0, duplicates: 0, ignored: 0 };
+  let lastLedger: number | null = null;
+  await db.transaction().execute(async (tx) => {
+    for (const p of page.payments) {
+      lastLedger = Math.max(lastLedger ?? 0, p.ledger);
+      const c = classifyPayment(p, rules);
+      if (c.kind === 'ignored') {
+        stats.ignored += 1;
+        continue;
+      }
+      if (c.kind === 'unmatched') {
+        if (c.amount === null) {
+          logger.warn(
+            { alert: 'unmatched_receipt', reason: c.reason, tx_hash: p.txHash },
+            'unparseable receipt',
+          );
+          stats.unmatched += 1;
+          continue;
+        }
+        const stored = await storeUnmatchedReceipt(tx, candidate(p, c.amount, p.memo.value));
+        if (stored) stats.unmatched += 1;
+        else stats.duplicates += 1;
+        continue;
+      }
+      const outcome = await applyPaymentReceipt(tx, candidate(p, c.amount, c.memo), newId);
+      if (outcome.kind === 'duplicate') stats.duplicates += 1;
+      else if (outcome.kind === 'unmatched') stats.unmatched += 1;
+      else stats.applied += 1;
+    }
+    if (cursorName !== null && page.payments.length > 0) {
+      const previous = await getCursor(tx, cursorName);
+      await saveCursor(tx, cursorName, {
+        cursor: page.cursor,
+        ledger: lastLedger ?? previous?.ledger ?? 0,
+      });
+    }
+  });
+  if (stats.unmatched > 0) {
+    // Context §13.2: unmatched money is never auto-credited and always alerts.
+    logger.warn(
+      { alert: 'unmatched_receipt', count: stats.unmatched },
+      'unmatched receipts stored for review',
+    );
+  }
+  return {
+    ...stats,
+    cursor: page.cursor,
+    lastLedger,
+    latestLedger: page.latestLedger,
+    empty: page.payments.length === 0,
+  };
+}
+
+export interface IngestDeps {
+  readonly db: Db;
+  /** Dedicated session connection: advisory locks are session-scoped (§7.5). */
+  readonly sessionPool: pg.Pool;
+  readonly source: LedgerSource;
+  readonly rules: MatchingRules;
+  readonly startLedger: number | null;
+  readonly metrics: Metrics;
+  readonly logger: JobLogger;
+  readonly pageSize?: number;
+  readonly maxPagesPerPass?: number;
+}
+
+/** Ingest job: only the advisory-lock leader runs; other replicas are hot standbys. */
+export function createIngestJob(
+  deps: IngestDeps,
+  intervalMs = 2000,
+): Job & { release(): Promise<void> } {
+  let session: pg.PoolClient | null = null;
+  let lock: LeaderLock | null = null;
+  const cursorName = `payments:${deps.source.name}`;
+
+  const ensureLeader = async (): Promise<boolean> => {
+    if (lock !== null) return true;
+    session ??= await deps.sessionPool.connect();
+    lock = await tryAcquireLeaderLock(session);
+    if (lock !== null) deps.logger.info({ source: deps.source.name }, 'became ingest leader');
+    deps.metrics.set('ingest_is_leader', lock === null ? 0 : 1);
+    return lock !== null;
+  };
+
+  return {
+    name: 'ingest',
+    intervalMs,
+    async run(signal) {
+      if (!(await ensureLeader())) return;
+      for (let i = 0; i < (deps.maxPagesPerPass ?? 20) && !signal.aborted; i++) {
+        const saved = await getCursor(deps.db, cursorName);
+        const position = saved
+          ? { cursor: saved.cursor }
+          : deps.startLedger === null
+            ? { cursor: 'now' }
+            : { startLedger: deps.startLedger };
+        const stats = await processPage(
+          deps.db,
+          deps.source,
+          deps.rules,
+          position,
+          deps.pageSize ?? 200,
+          cursorName,
+          deps.logger,
+        );
+        const processed = stats.lastLedger ?? saved?.ledger ?? stats.latestLedger;
+        deps.metrics.set('ingest_lag_ledgers', Math.max(0, stats.latestLedger - processed));
+        deps.metrics.inc('receipts_applied_total', stats.applied);
+        deps.metrics.inc('receipts_unmatched_total', stats.unmatched);
+        if (stats.empty) {
+          // Nothing new; we are caught up, so lag is zero relative to the provider.
+          deps.metrics.set('ingest_lag_ledgers', 0);
+          return;
+        }
+      }
+    },
+    async release() {
+      if (lock !== null) await lock.release();
+      session?.release();
+      lock = null;
+      session = null;
+    },
+  };
+}
+
+export interface ReconcileDeps {
+  readonly db: Db;
+  readonly source: LedgerSource;
+  readonly rules: MatchingRules;
+  readonly logger: JobLogger;
+  readonly metrics: Metrics;
+  /** Context §13.4: re-scan the last 2,000 ledgers. */
+  readonly windowLedgers?: number;
+}
+
+/** Re-scans recent ledgers and applies anything missed; idempotent via receipt uniqueness. */
+export function createReconcileJob(deps: ReconcileDeps, intervalMs = 15 * 60_000): Job {
+  return {
+    name: 'reconcile',
+    intervalMs,
+    async run(signal) {
+      const cursor = await getCursor(deps.db, `payments:${deps.source.name}`);
+      if (cursor === undefined) return;
+      let position: { cursor: string } | { startLedger: number } = {
+        startLedger: Math.max(1, cursor.ledger - (deps.windowLedgers ?? 2000)),
+      };
+      let filled = 0;
+      for (let i = 0; i < 100 && !signal.aborted; i++) {
+        const stats = await processPage(
+          deps.db,
+          deps.source,
+          deps.rules,
+          position,
+          200,
+          null,
+          deps.logger,
+        );
+        filled += stats.applied + stats.unmatched;
+        if (stats.empty || (stats.lastLedger !== null && stats.lastLedger >= cursor.ledger)) break;
+        position = { cursor: stats.cursor };
+      }
+      if (filled > 0) {
+        deps.metrics.inc('reconcile_filled_total', filled);
+        deps.logger.warn(
+          { alert: 'reconcile_filled_gap', filled },
+          'reconciliation applied missed receipts',
+        );
+      }
+    },
+  };
+}
