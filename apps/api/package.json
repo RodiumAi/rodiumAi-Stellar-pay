@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-kms": "3.1145.0",
     "@fastify/helmet": "13.1.1",
     "@rp/config": "workspace:*",
     "@rp/core": "workspace:*",

@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./aws-kms": {
+      "@rp/source": "./src/aws-kms.ts",
+      "types": "./dist/aws-kms.d.ts",
+      "default": "./dist/aws-kms.js"
+    },
     "./blind-index": {
       "@rp/source": "./src/blind-index.ts",
       "types": "./dist/blind-index.d.ts",

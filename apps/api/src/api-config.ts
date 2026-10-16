@@ -28,6 +28,8 @@ export interface ApiConfig {
     readonly current: string;
     readonly stored: readonly { readonly id: string; readonly wrapped: string }[];
   };
+  /** AWS KMS key id/ARN/alias wrapping the field data keys (staging/production). */
+  readonly awsKmsKeyId: string | null;
   readonly localDevKmsMasterKey: Uint8Array | null;
 }
 
@@ -100,6 +102,12 @@ const EnvSchema = z.object({
         .min(1),
     ),
   FIELD_DATA_KEY_CURRENT: z.string().regex(/^[0-9a-f]{32}$/),
+  AWS_KMS_KEY_ID: z
+    .string()
+    .regex(
+      /^(arn:aws[a-z-]*:kms:[a-z0-9-]+:\d{12}:(key|alias)\/[A-Za-z0-9/_-]+|alias\/[A-Za-z0-9/_-]+|[0-9a-f-]{36})$/,
+    )
+    .optional(),
   LOCAL_DEV_KMS_MASTER_KEY: b64urlKey(32).optional(),
 });
 
@@ -142,6 +150,7 @@ export function loadApiConfig(
       current: e.FIELD_DATA_KEY_CURRENT,
       stored: e.FIELD_DATA_KEYS.map(([id, wrapped]) => ({ id, wrapped })),
     },
+    awsKmsKeyId: e.AWS_KMS_KEY_ID ?? null,
     localDevKmsMasterKey: e.LOCAL_DEV_KMS_MASTER_KEY ?? null,
   });
 }

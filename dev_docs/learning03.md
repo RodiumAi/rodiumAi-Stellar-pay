@@ -103,3 +103,12 @@ Subscription testnet E2E green (4/4)
 
 - Subscribe via checkout (one signature) → `subscription.activated`; keeper charge via mTLS signer → `subscription.renewed`; payer sells USDC → failed charge → `subscription.past_due`; wallet-side `cancel` → `subscription.canceled` via event sync. All webhook signatures valid; no signer refusals.
 - Contract `CCREU5CN…GSFK` (test-short-intervals build). Run: `pnpm build:all && pnpm e2e:testnet:subscriptions` (~5 min).
+
+### 2026-10-16 · S10 · security · decision
+
+AWS KMS adapter without the SDK in `@rp/security`; secrets as mounted files
+
+- `createAwsKms(api, keyId)` takes any object with `encrypt`/`decrypt` (the SDK's `KMS` class fits), so the security package has no AWS dependency and tests use a fake. Encryption context `{purpose: 'rp.field-data-key.v1'}` and a pinned `KeyId` on decrypt: a blob from another key or purpose is refused.
+- Verified with the real SDK against `nsmithuk/local-kms:3` (`AWS_ENDPOINT_URL`): round trip ok; other key and missing context → `InvalidCiphertextException`. `apps/api/scripts/aws-data-key.mjs` creates wrapped data keys (round-trips before printing; never prints the plaintext).
+- `@aws-sdk/client-kms` 3.1145.0 (+25 packages): `minimumReleaseAge` in pnpm refused the newest — let pnpm pick instead of pinning by hand.
+- Secrets Manager wiring = `FOO_FILE=/path` (`resolveSecretFiles` in `@rp/config`), used by api, worker and signer. Both set → error. The signer's file must sit under `--allow-fs-read`.

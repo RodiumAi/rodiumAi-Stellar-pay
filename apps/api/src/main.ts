@@ -1,6 +1,9 @@
+import { KMS } from '@aws-sdk/client-kms';
 import { loadConfig } from '@rp/config/app-config';
+import { resolveSecretFiles } from '@rp/config/secret-files';
 import { cryptoRandomBytes } from '@rp/core/random';
 import { createDb, createPool } from '@rp/db/connection';
+import { createAwsKms } from '@rp/security/aws-kms';
 import { loadKeyring } from '@rp/security/envelope';
 import { createLocalDevKms, type Kms } from '@rp/security/kms';
 import { createLogger } from '@rp/security/logger';
@@ -28,18 +31,22 @@ function fail(lines: readonly string[]): never {
 }
 
 async function main(): Promise<void> {
-  const app = loadConfig(process.env);
+  const env = resolveSecretFiles(process.env);
+  if (!env.ok) fail(env.error);
+  const app = loadConfig(env.value);
   if (!app.ok) fail(app.error.issues);
-  const api = loadApiConfig(process.env);
+  const api = loadApiConfig(env.value);
   if (!api.ok) fail(api.error);
   const logger = createLogger({ level: app.value.logLevel, service: 'api' });
 
   let kms: Kms;
-  if (api.value.localDevKmsMasterKey !== null && app.value.env !== 'production') {
+  if (api.value.awsKmsKeyId !== null) {
+    // Region and credentials come from the standard AWS chain (IRSA/ECS role in staging/prod).
+    kms = createAwsKms(new KMS({ maxAttempts: 3 }), api.value.awsKmsKeyId);
+  } else if (api.value.localDevKmsMasterKey !== null && app.value.env !== 'production') {
     kms = createLocalDevKms(api.value.localDevKmsMasterKey, cryptoRandomBytes);
   } else {
-    // AWS KMS adapter arrives in Sprint 10; refuse to start rather than run without one.
-    fail(['No KMS configured: LOCAL_DEV_KMS_MASTER_KEY is dev-only and AWS KMS is not wired yet']);
+    fail(['No KMS configured: set AWS_KMS_KEY_ID (LOCAL_DEV_KMS_MASTER_KEY is dev-only)']);
   }
   const keyring = await loadKeyring(
     kms,
