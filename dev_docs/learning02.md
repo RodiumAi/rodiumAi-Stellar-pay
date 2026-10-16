@@ -206,3 +206,16 @@ Canceling an `incomplete` subscription violated the schema CHECK
 - Tag push blocked locally: `.gitleaksignore` fingerprints contain commit hashes, and rebase-merge rewrote them, so the 3 reviewed false positives reappeared on `main`.
 - Fix: `.gitleaks.toml` (default rules + allow-list of the 3 exact fake values) replaces `.gitleaksignore`. The `v0.6.0` tag was pushed with `--no-verify` once, after CI on `main` was fully green — the only local failure was those known false positives.
 - Prevent: allow-list gitleaks false positives by value/path, never by commit fingerprint, in a rebase-merge repo.
+
+### 2026-10-16 · S7 · worker · decision
+
+Payments pipeline: page + cursor in one transaction; leased webhook delivery
+
+- Ingest: fetch a page outside any transaction, then write every receipt **and** the cursor in one transaction (`applyPaymentReceipt(tx, …)`); leader via advisory lock on a dedicated session pool.
+- Dispatch: `leaseDueEvents` pushes `next_attempt_at` forward (30 s lease) in one statement, delivery happens outside any transaction — holding row locks during HTTP would hit `idle_in_transaction_session_timeout` (15 s) on a slow receiver. Backoff 10s→12h ±10% jitter, then `dead`; `replay.js <id> <operator>` requeues with an audit entry.
+- Verified: 11 DB integration tests (crash mid-batch via a temporary trigger → page and cursor roll back, restart applies each receipt once; one leader of two; underpay+top-up with both tx hashes; overpay; unmatched never credited; reconcile fills a gap idempotently; expiry → late_paid; full retry schedule → dead → replay → delivered with a valid signature; two dispatchers never double-deliver), 13 unit tests, and a **Quickstart E2E**: API payment → real USDC payment with memo → worker confirms → signed `payment.confirmed` webhook with the tx hash.
+- Smoke: compiled worker on testnet — passphrase check OK, leader, lag 0, SIGTERM drained cleanly.
+
+### 2026-10-16 · S7 · tooling · fact
+
+macOS has no `timeout`; run background processes with `&` and `pkill -TERM` instead.
