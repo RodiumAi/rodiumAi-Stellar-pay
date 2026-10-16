@@ -219,3 +219,12 @@ Payments pipeline: page + cursor in one transaction; leased webhook delivery
 ### 2026-10-16 · S7 · tooling · fact
 
 macOS has no `timeout`; run background processes with `&` and `pkill -TERM` instead.
+
+### 2026-10-16 · S7 · test · test-fail
+
+Flaky dispatch test: cross-file parallelism on a shared test DB
+
+- What: "expected +0 to be 1" (attempts) about half the time.
+- Why: vitest runs integration files in parallel against one database; the DB repository test briefly `FOR UPDATE`-locks all due outbox rows, and the dispatcher's `SKIP LOCKED` lease correctly skipped them. (Also: >20 due events from other tests exceeded the default batch.)
+- Fix: `fileParallelism: false` for the `int` project (~10 s total) and a large batch in that test. 3/3 green reruns.
+- Prevent: integration files that share a database never run in parallel.
