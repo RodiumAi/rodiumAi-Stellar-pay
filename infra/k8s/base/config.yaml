@@ -11,6 +11,11 @@ data:
   RP_STELLAR_HORIZON_URL: https://horizon-testnet.stellar.org
   MERCHANT_ADDRESS: G_REPLACE_IN_OVERLAY
   SUBSCRIPTION_CONTRACT_ID: C_REPLACE_IN_OVERLAY
+  # Exposure caps and fee caps (context §6.3, §13.3); every service validates them at boot.
+  MAX_FEE_STROOPS: '100000'
+  MAX_SOROBAN_FEE_STROOPS: '20000000'
+  MAX_PAYMENT_USDC: '500'
+  MAX_SUBSCRIPTION_PRICE_USDC: '100'
   CHECKOUT_BASE_URL: https://pay.example.com
   RETURN_URL_ORIGINS: https://app.example.com
   WEBHOOK_URL: https://app.example.com/webhooks/rodium-pay
@@ -20,6 +25,9 @@ data:
   FIELD_DATA_KEY_CURRENT: REPLACE_HEX_ID
   KEEPER_ADDRESS: G_REPLACE_IN_OVERLAY
   SUBSCRIPTION_PLANS: '[]'
+  SUBSCRIPTION_APPROVE_PERIODS: '3'
+  FX_SUPPORTED_FIAT: USD,GHS
+  FX_MAX_RATE_AGE_SECONDS: '93600'
   # Traces (OTLP/HTTP) to the platform's collector; unset disables tracing.
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
 ---
@@ -34,6 +42,11 @@ data:
   RP_STELLAR_NETWORK: testnet
   MERCHANT_ADDRESS: G_REPLACE_IN_OVERLAY
   SUBSCRIPTION_CONTRACT_ID: C_REPLACE_IN_OVERLAY
+  # Exposure caps and fee caps (context §6.3, §13.3); every service validates them at boot.
+  MAX_FEE_STROOPS: '100000'
+  MAX_SOROBAN_FEE_STROOPS: '20000000'
+  MAX_PAYMENT_USDC: '500'
+  MAX_SUBSCRIPTION_PRICE_USDC: '100'
   # Plain-HTTP metrics port; NetworkPolicy admits only the monitoring namespace.
   SIGNER_METRICS_HOST: 0.0.0.0
 ---
