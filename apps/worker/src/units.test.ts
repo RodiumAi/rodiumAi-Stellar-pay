@@ -109,7 +109,7 @@ describe('webhook delivery', () => {
     );
     expect(result).toEqual({ ok: true });
     const [, init] = fetch.mock.calls[0] ?? [];
-    const sent = Buffer.isBuffer(init?.body) ? init.body.toString('utf8') : '';
+    const sent = init?.body instanceof Uint8Array ? Buffer.from(init.body).toString('utf8') : '';
     expect(JSON.parse(sent)).toEqual({
       id: event.id,
       type: 'payment.confirmed',
