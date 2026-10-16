@@ -109,7 +109,7 @@ Phase A (foundations) complete — S0–S5 tagged `v0.0.1`…`v0.5.0`
 
 ---
 
-## ▶ RESUME HERE (for a fresh session)
+## ▶ RESUME HERE (superseded — read the newest `learningNN.md` instead)
 
 Read in order: this section → hand-off summary at the bottom of `learning01.md` → `dev_docs/BUILD_PLAN.md` (Sprint 6 section) → `docs/context.md` (§8 Redis, §9 API, §6 Quote, §12 secrets).
 
@@ -265,3 +265,11 @@ Testnet E2E green with real Circle testnet USDC (`pnpm e2e:testnet`)
 - C: unpaid 60 s quote → `expired`.
 - Payer buys USDC on the testnet DEX (`pathPaymentStrictReceive`, ~1.1 XLM/USDC); merchant `rp_testnet_merchant` has a USDC trustline now.
 - Also: Fastify 5.12 deprecates top-level `requestIdLogLabel`/`disableRequestLogging` → `logController: new LogController({...})`.
+
+---
+
+## Hand-off summary (file full; continue in `learning03.md`)
+
+- **S4–S8 done** (`v0.4.0`–`v0.8.0`): Soroban contract with free-tool review; `stellar` sources/guards/SEP-7; `/v1` API; worker (ingest, reconcile, expiry, signed webhooks); hosted checkout (Freighter + SEP-7). Testnet E2E green with real Circle testnet USDC.
+- **Spec deviations recorded in `docs/context.md`:** contract constructor instead of `init`; Horizon default for payments (RPC retention ~3 h); derived checkout tokens; Postgres-only idempotency; migration 0003 (cancel incomplete subscriptions); Freighter + SEP-7 instead of Stellar Wallets Kit.
+- **Recurring traps:** Prettier pads Markdown tables (edit with regex, not exact strings); `@upstash/redis` needs `automaticDeserialization: false`; shared test DB → integration files run serially; one clock (app) for all scheduling; gitleaks allow-list by value, not commit fingerprint; pre-push hook checks the whole working tree.
