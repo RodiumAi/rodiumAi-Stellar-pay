@@ -2,7 +2,9 @@
 # recipient whose private key is held outside Supabase and AWS, uploaded to S3.
 # pg_dump matches the Supabase Postgres major (17). Runs as the image's postgres user.
 FROM docker.io/library/postgres:17.6-alpine3.22@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
-RUN apk add --no-cache age aws-cli
+# Patch the base's OS packages at build time (the weekly rebuild keeps them current) and drop
+# gosu: the job never starts as root, and it is an old Go binary Trivy flags.
+RUN apk upgrade --no-cache && apk add --no-cache age aws-cli && rm -f /usr/local/bin/gosu
 COPY scripts/backup/export.sh scripts/backup/restore.sh /usr/local/bin/
 USER postgres
 ENTRYPOINT ["/usr/local/bin/export.sh"]
