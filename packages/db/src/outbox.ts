@@ -9,8 +9,16 @@ export interface OutboxEvent {
   readonly payload: unknown;
 }
 
-/** Must run in the same transaction as the state change it announces (context §10.1). */
-export async function enqueueEvent(tx: Tx, event: OutboxEvent): Promise<void> {
+/**
+ * Must run in the same transaction as the state change it announces (context §10.1).
+ * `next_attempt_at` uses the application clock, like leasing and retries do, so skew
+ * between the app and database clocks can never delay a delivery.
+ */
+export async function enqueueEvent(
+  tx: Tx,
+  event: OutboxEvent,
+  now: Date = new Date(),
+): Promise<void> {
   await tx
     .insertInto('outbox_events')
     .values({
@@ -18,6 +26,7 @@ export async function enqueueEvent(tx: Tx, event: OutboxEvent): Promise<void> {
       event_type: event.type,
       aggregate_id: event.aggregateId,
       payload: JSON.stringify(event.payload),
+      next_attempt_at: now,
     })
     .execute();
 }
