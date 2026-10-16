@@ -13,28 +13,29 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 
 ## Installed in Sprint 0 (dev tooling)
 
-| Package                      | Pinned           | Published                        |
-| ---------------------------- | ---------------- | -------------------------------- |
-| typescript (5.x per §3)      | 5.9.3            | 2025-09-30                       |
-| eslint                       | 10.11.0          | 2026-09-18                       |
-| typescript-eslint            | 8.71.0           | 2026-09-28                       |
-| eslint-plugin-security       | 4.2.0            | 2026-10-01                       |
-| prettier                     | 3.9.9            | 2026-09-23                       |
-| vitest / @vitest/coverage-v8 | 5.0.3            | 2026-09-30                       |
-| @types/node (24)             | 24.19.0          | 2026-09-25                       |
-| fast-check (S1)              | 4.10.2           | 2026-09-19                       |
-| zod (S2, config)             | 4.6.5            | 2026-09-13                       |
-| fastify (S6)                 | 5.12.5           | 2026-09-16                       |
-| @fastify/helmet (S6)         | 13.1.1           | 2026-08-19                       |
-| @upstash/redis (S6)          | 1.39.0           | 2026-09-21                       |
-| @upstash/ratelimit (S6)      | 2.2.0            | 2026-09-23                       |
-| actions/cache (CI)           | v5.1.0 `caa2961` | 2026-06-26                       |
-| vite (S8, checkout build)    | 8.3.2            | 2026-10-01                       |
-| @stellar/freighter-api (S8)  | 6.0.1            | 2025-12-03                       |
-| uqr (S8, QR SVG, 0 deps)     | 0.1.3            | 2026-04-03                       |
-| axe-core (dev)               | 4.13.0           | 2026-08-05                       |
-| jsdom / @types/jsdom (dev)   | 30.1.1 / 30.0.0  | 2026-09-22                       |
-| pino (S2, security)          | 10.3.1           | 2026-02-09 (10.4.0 is < 14 days) |
+| Package                      | Pinned           | Published                         |
+| ---------------------------- | ---------------- | --------------------------------- |
+| typescript (5.x per §3)      | 5.9.3            | 2025-09-30                        |
+| eslint                       | 10.11.0          | 2026-09-18                        |
+| typescript-eslint            | 8.71.0           | 2026-09-28                        |
+| eslint-plugin-security       | 4.2.0            | 2026-10-01                        |
+| prettier                     | 3.9.9            | 2026-09-23                        |
+| vitest / @vitest/coverage-v8 | 5.0.3            | 2026-09-30                        |
+| @types/node (24)             | 24.19.0          | 2026-09-25                        |
+| fast-check (S1)              | 4.10.2           | 2026-09-19                        |
+| zod (S2, config)             | 4.6.5            | 2026-09-13                        |
+| fastify (S6)                 | 5.12.5           | 2026-09-16                        |
+| @fastify/helmet (S6)         | 13.1.1           | 2026-08-19                        |
+| @upstash/redis (S6)          | 1.39.0           | 2026-09-21                        |
+| @upstash/ratelimit (S6)      | 2.2.0            | 2026-09-23                        |
+| actions/cache (CI)           | v5.1.0 `caa2961` | 2026-06-26                        |
+| vite (S8, checkout build)    | 8.3.2            | 2026-10-01                        |
+| @stellar/freighter-api (S8)  | 6.0.1            | 2025-12-03                        |
+| uqr (S8, QR SVG, 0 deps)     | 0.1.3            | 2026-04-03                        |
+| axe-core (dev)               | 4.13.0           | 2026-08-05                        |
+| jsdom / @types/jsdom (dev)   | 30.1.1 / 30.0.0  | 2026-09-22                        |
+| pino (S2, security)          | 10.3.1           | 2026-02-09 (10.4.0 is < 14 days)  |
+| @aws-sdk/client-kms (S10)    | 3.1145.0         | 2026-10-01 (+25 packages, ~15 MB) |
 
 ## Selected for later sprints (re-check age when installed)
 

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { loadConfig, withoutEmpty } from '@rp/config/app-config';
+import { resolveSecretFiles } from '@rp/config/secret-files';
 import { createLogger } from '@rp/security/logger';
 import { Keypair, StrKey } from '@stellar/stellar-sdk';
 import { z } from 'zod';
@@ -22,9 +23,12 @@ function fail(lines: readonly string[]): never {
   process.exit(1);
 }
 
-const app = loadConfig(process.env);
+// KEEPER_SECRET_FILE must sit under a path allowed by --allow-fs-read.
+const env = resolveSecretFiles(process.env);
+if (!env.ok) fail(env.error);
+const app = loadConfig(env.value);
 if (!app.ok) fail(app.error.issues);
-const parsed = Env.safeParse(withoutEmpty(process.env));
+const parsed = Env.safeParse(withoutEmpty(env.value));
 if (!parsed.success) fail(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
 const e = parsed.data;
 const logger = createLogger({ level: app.value.logLevel, service: 'signer' });

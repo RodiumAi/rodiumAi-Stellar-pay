@@ -72,6 +72,7 @@ export function apiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     upstash: { url: 'https://upstash.test', token: 'x'.repeat(20) },
     databaseUrl: 'postgres://unused',
     dataKeys: { current: '00'.repeat(16), stored: [] },
+    awsKmsKeyId: null,
     localDevKmsMasterKey: null,
     ...overrides,
   };

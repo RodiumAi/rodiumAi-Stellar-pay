@@ -9,6 +9,11 @@
       "types": "./dist/app-config.d.ts",
       "default": "./dist/app-config.js"
     },
+    "./secret-files": {
+      "@rp/source": "./src/secret-files.ts",
+      "types": "./dist/secret-files.d.ts",
+      "default": "./dist/secret-files.js"
+    },
     "./network": {
       "@rp/source": "./src/network.ts",
       "types": "./dist/network.d.ts",

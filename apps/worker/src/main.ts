@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { loadConfig } from '@rp/config/app-config';
+import { resolveSecretFiles } from '@rp/config/secret-files';
 import { cryptoRandomBytes } from '@rp/core/random';
 import { createDb, createPool } from '@rp/db/connection';
 import { createLogger } from '@rp/security/logger';
@@ -32,9 +33,11 @@ function fail(lines: readonly string[]): never {
 }
 
 async function main(): Promise<void> {
-  const app = loadConfig(process.env);
+  const env = resolveSecretFiles(process.env);
+  if (!env.ok) fail(env.error);
+  const app = loadConfig(env.value);
   if (!app.ok) fail(app.error.issues);
-  const cfg = loadWorkerConfig(process.env);
+  const cfg = loadWorkerConfig(env.value);
   if (!cfg.ok) fail(cfg.error);
   const { network } = app.value;
   const logger = createLogger({ level: app.value.logLevel, service: 'worker' });

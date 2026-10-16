@@ -176,6 +176,20 @@ describe('loadApiConfig', () => {
     expect(r.value.port).toBe(8080);
   });
 
+  it.each([
+    'arn:aws:kms:eu-west-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab',
+    'arn:aws:kms:eu-west-1:123456789012:alias/rp-field-kek',
+    'alias/rp-field-kek',
+    '1234abcd-12ab-34cd-56ef-1234567890ab',
+  ])('accepts AWS_KMS_KEY_ID %s', (id) => {
+    const r = loadApiConfig({ ...valid, AWS_KMS_KEY_ID: id });
+    expect(r.ok && r.value.awsKmsKeyId).toBe(id);
+  });
+
+  it('rejects a malformed AWS_KMS_KEY_ID', () => {
+    expect(loadApiConfig({ ...valid, AWS_KMS_KEY_ID: 'rp-field-kek' }).ok).toBe(false);
+  });
+
   it.each<[string, Record<string, string>, string]>([
     [
       'origin with a path',
