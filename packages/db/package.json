@@ -4,17 +4,61 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./audit-log": "./src/audit-log.ts",
-    "./connection": "./src/connection.ts",
-    "./cursors": "./src/cursors.ts",
-    "./leader-lock": "./src/leader-lock.ts",
-    "./migrate": "./src/migrate.ts",
-    "./outbox": "./src/outbox.ts",
-    "./payment-receipts": "./src/payment-receipts.ts",
-    "./payments": "./src/payments.ts",
-    "./receipts": "./src/receipts.ts",
-    "./schema": "./src/schema.ts",
-    "./subscriptions": "./src/subscriptions.ts"
+    "./audit-log": {
+      "@rp/source": "./src/audit-log.ts",
+      "types": "./dist/audit-log.d.ts",
+      "default": "./dist/audit-log.js"
+    },
+    "./connection": {
+      "@rp/source": "./src/connection.ts",
+      "types": "./dist/connection.d.ts",
+      "default": "./dist/connection.js"
+    },
+    "./cursors": {
+      "@rp/source": "./src/cursors.ts",
+      "types": "./dist/cursors.d.ts",
+      "default": "./dist/cursors.js"
+    },
+    "./leader-lock": {
+      "@rp/source": "./src/leader-lock.ts",
+      "types": "./dist/leader-lock.d.ts",
+      "default": "./dist/leader-lock.js"
+    },
+    "./migrate": {
+      "@rp/source": "./src/migrate.ts",
+      "types": "./dist/migrate.d.ts",
+      "default": "./dist/migrate.js"
+    },
+    "./outbox": {
+      "@rp/source": "./src/outbox.ts",
+      "types": "./dist/outbox.d.ts",
+      "default": "./dist/outbox.js"
+    },
+    "./payment-receipts": {
+      "@rp/source": "./src/payment-receipts.ts",
+      "types": "./dist/payment-receipts.d.ts",
+      "default": "./dist/payment-receipts.js"
+    },
+    "./payments": {
+      "@rp/source": "./src/payments.ts",
+      "types": "./dist/payments.d.ts",
+      "default": "./dist/payments.js"
+    },
+    "./receipts": {
+      "@rp/source": "./src/receipts.ts",
+      "types": "./dist/receipts.d.ts",
+      "default": "./dist/receipts.js"
+    },
+    "./schema": {
+      "@rp/source": "./src/schema.ts",
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
+    "./subscriptions": {
+      "@rp/source": "./src/subscriptions.ts",
+      "types": "./dist/subscriptions.d.ts",
+      "default": "./dist/subscriptions.js"
+    }
   },
   "dependencies": {
     "@rp/core": "workspace:*",

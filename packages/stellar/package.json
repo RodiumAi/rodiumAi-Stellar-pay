@@ -4,15 +4,51 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./contract-events": "./src/contract-events.ts",
-    "./horizon-source": "./src/horizon-source.ts",
-    "./ledger-source": "./src/ledger-source.ts",
-    "./network-check": "./src/network-check.ts",
-    "./observed-payment": "./src/observed-payment.ts",
-    "./rpc-source": "./src/rpc-source.ts",
-    "./sep7": "./src/sep7.ts",
-    "./subscribe-tx": "./src/subscribe-tx.ts",
-    "./xdr-guards": "./src/xdr-guards.ts"
+    "./contract-events": {
+      "@rp/source": "./src/contract-events.ts",
+      "types": "./dist/contract-events.d.ts",
+      "default": "./dist/contract-events.js"
+    },
+    "./horizon-source": {
+      "@rp/source": "./src/horizon-source.ts",
+      "types": "./dist/horizon-source.d.ts",
+      "default": "./dist/horizon-source.js"
+    },
+    "./ledger-source": {
+      "@rp/source": "./src/ledger-source.ts",
+      "types": "./dist/ledger-source.d.ts",
+      "default": "./dist/ledger-source.js"
+    },
+    "./network-check": {
+      "@rp/source": "./src/network-check.ts",
+      "types": "./dist/network-check.d.ts",
+      "default": "./dist/network-check.js"
+    },
+    "./observed-payment": {
+      "@rp/source": "./src/observed-payment.ts",
+      "types": "./dist/observed-payment.d.ts",
+      "default": "./dist/observed-payment.js"
+    },
+    "./rpc-source": {
+      "@rp/source": "./src/rpc-source.ts",
+      "types": "./dist/rpc-source.d.ts",
+      "default": "./dist/rpc-source.js"
+    },
+    "./sep7": {
+      "@rp/source": "./src/sep7.ts",
+      "types": "./dist/sep7.d.ts",
+      "default": "./dist/sep7.js"
+    },
+    "./subscribe-tx": {
+      "@rp/source": "./src/subscribe-tx.ts",
+      "types": "./dist/subscribe-tx.d.ts",
+      "default": "./dist/subscribe-tx.js"
+    },
+    "./xdr-guards": {
+      "@rp/source": "./src/xdr-guards.ts",
+      "types": "./dist/xdr-guards.d.ts",
+      "default": "./dist/xdr-guards.js"
+    }
   },
   "dependencies": {
     "@rp/config": "workspace:*",
