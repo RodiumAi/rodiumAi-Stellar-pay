@@ -64,7 +64,7 @@ workflow run prints the digests in its summary.
          "Condition": {
            "StringEquals": {
              "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-             "token.actions.githubusercontent.com:sub": "repo:RodiumAi/rodiumAi-Stellar-pay:ref:refs/heads/main"
+             "token.actions.githubusercontent.com:sub": "repo:RodiumAi@282585446/rodiumAi-Stellar-pay@1420652748:ref:refs/heads/main"
            }
          }
        }
@@ -72,11 +72,15 @@ workflow run prints the digests in its summary.
    }
    ```
 
+   The repository uses GitHub's **immutable subject** format (org and repo IDs), so the `sub`
+   must be exactly as above — the name-only form `repo:RodiumAi/rodiumAi-Stellar-pay:…` is
+   refused. Check with `gh api repos/RodiumAi/rodiumAi-Stellar-pay/actions/oidc/customization/sub`.
+
    Permissions: `ecr:GetAuthorizationToken` on `*`, and on the four repositories only:
    `ecr:BatchCheckLayerAvailability`, `ecr:InitiateLayerUpload`, `ecr:UploadLayerPart`,
    `ecr:CompleteLayerUpload`, `ecr:PutImage`, `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`.
 
-3. Send us the role ARN. We set the GitHub repository variable
+3. Done on 2026-10-16 (repositories and role created, variable set). For reference: we set the GitHub repository variable
    `AWS_ECR_ROLE_ARN=arn:aws:iam::330990434320:role/rodium-pay-github-ecr`; from then on every
    release also lands in ECR.
 
