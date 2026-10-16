@@ -4,19 +4,75 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./brand": "./src/brand.ts",
-    "./ids": "./src/ids.ts",
-    "./memo": "./src/memo.ts",
-    "./money/convert": "./src/money/convert.ts",
-    "./money/fiat": "./src/money/fiat.ts",
-    "./money/fx-rate": "./src/money/fx-rate.ts",
-    "./money/stroops": "./src/money/stroops.ts",
-    "./payment": "./src/payment.ts",
-    "./random": "./src/random.ts",
-    "./result": "./src/result.ts",
-    "./stellar-address": "./src/stellar-address.ts",
-    "./subscription": "./src/subscription.ts",
-    "./time": "./src/time.ts",
-    "./uuid-v7": "./src/uuid-v7.ts"
+    "./brand": {
+      "@rp/source": "./src/brand.ts",
+      "types": "./dist/brand.d.ts",
+      "default": "./dist/brand.js"
+    },
+    "./ids": {
+      "@rp/source": "./src/ids.ts",
+      "types": "./dist/ids.d.ts",
+      "default": "./dist/ids.js"
+    },
+    "./memo": {
+      "@rp/source": "./src/memo.ts",
+      "types": "./dist/memo.d.ts",
+      "default": "./dist/memo.js"
+    },
+    "./money/convert": {
+      "@rp/source": "./src/money/convert.ts",
+      "types": "./dist/money/convert.d.ts",
+      "default": "./dist/money/convert.js"
+    },
+    "./money/fiat": {
+      "@rp/source": "./src/money/fiat.ts",
+      "types": "./dist/money/fiat.d.ts",
+      "default": "./dist/money/fiat.js"
+    },
+    "./money/fx-rate": {
+      "@rp/source": "./src/money/fx-rate.ts",
+      "types": "./dist/money/fx-rate.d.ts",
+      "default": "./dist/money/fx-rate.js"
+    },
+    "./money/stroops": {
+      "@rp/source": "./src/money/stroops.ts",
+      "types": "./dist/money/stroops.d.ts",
+      "default": "./dist/money/stroops.js"
+    },
+    "./payment": {
+      "@rp/source": "./src/payment.ts",
+      "types": "./dist/payment.d.ts",
+      "default": "./dist/payment.js"
+    },
+    "./random": {
+      "@rp/source": "./src/random.ts",
+      "types": "./dist/random.d.ts",
+      "default": "./dist/random.js"
+    },
+    "./result": {
+      "@rp/source": "./src/result.ts",
+      "types": "./dist/result.d.ts",
+      "default": "./dist/result.js"
+    },
+    "./stellar-address": {
+      "@rp/source": "./src/stellar-address.ts",
+      "types": "./dist/stellar-address.d.ts",
+      "default": "./dist/stellar-address.js"
+    },
+    "./subscription": {
+      "@rp/source": "./src/subscription.ts",
+      "types": "./dist/subscription.d.ts",
+      "default": "./dist/subscription.js"
+    },
+    "./time": {
+      "@rp/source": "./src/time.ts",
+      "types": "./dist/time.d.ts",
+      "default": "./dist/time.js"
+    },
+    "./uuid-v7": {
+      "@rp/source": "./src/uuid-v7.ts",
+      "types": "./dist/uuid-v7.d.ts",
+      "default": "./dist/uuid-v7.js"
+    }
   }
 }

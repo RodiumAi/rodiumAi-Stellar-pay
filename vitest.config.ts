@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // Workspace packages export `@rp/source` (.ts) for tests/typecheck and `default` (dist) for Node.
+  // The condition name is scoped: some npm packages publish a plain `source` condition.
+  resolve: { conditions: ['@rp/source'] },
+  ssr: { resolve: { conditions: ['@rp/source'] } },
   test: {
     projects: [
       {

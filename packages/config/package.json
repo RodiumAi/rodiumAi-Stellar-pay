@@ -4,8 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./app-config": "./src/app-config.ts",
-    "./network": "./src/network.ts"
+    "./app-config": {
+      "@rp/source": "./src/app-config.ts",
+      "types": "./dist/app-config.d.ts",
+      "default": "./dist/app-config.js"
+    },
+    "./network": {
+      "@rp/source": "./src/network.ts",
+      "types": "./dist/network.d.ts",
+      "default": "./dist/network.js"
+    }
   },
   "dependencies": {
     "@rp/core": "workspace:*",

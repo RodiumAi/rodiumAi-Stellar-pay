@@ -4,14 +4,46 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./blind-index": "./src/blind-index.ts",
-    "./encoding": "./src/encoding.ts",
-    "./envelope": "./src/envelope.ts",
-    "./hmac-auth": "./src/hmac-auth.ts",
-    "./kms": "./src/kms.ts",
-    "./logger": "./src/logger.ts",
-    "./tokens": "./src/tokens.ts",
-    "./webhook-signature": "./src/webhook-signature.ts"
+    "./blind-index": {
+      "@rp/source": "./src/blind-index.ts",
+      "types": "./dist/blind-index.d.ts",
+      "default": "./dist/blind-index.js"
+    },
+    "./encoding": {
+      "@rp/source": "./src/encoding.ts",
+      "types": "./dist/encoding.d.ts",
+      "default": "./dist/encoding.js"
+    },
+    "./envelope": {
+      "@rp/source": "./src/envelope.ts",
+      "types": "./dist/envelope.d.ts",
+      "default": "./dist/envelope.js"
+    },
+    "./hmac-auth": {
+      "@rp/source": "./src/hmac-auth.ts",
+      "types": "./dist/hmac-auth.d.ts",
+      "default": "./dist/hmac-auth.js"
+    },
+    "./kms": {
+      "@rp/source": "./src/kms.ts",
+      "types": "./dist/kms.d.ts",
+      "default": "./dist/kms.js"
+    },
+    "./logger": {
+      "@rp/source": "./src/logger.ts",
+      "types": "./dist/logger.d.ts",
+      "default": "./dist/logger.js"
+    },
+    "./tokens": {
+      "@rp/source": "./src/tokens.ts",
+      "types": "./dist/tokens.d.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./webhook-signature": {
+      "@rp/source": "./src/webhook-signature.ts",
+      "types": "./dist/webhook-signature.d.ts",
+      "default": "./dist/webhook-signature.js"
+    }
   },
   "dependencies": {
     "@rp/core": "workspace:*",
