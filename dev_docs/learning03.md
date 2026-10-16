@@ -190,3 +190,12 @@ Ingest leader by lease row instead of a session advisory lock
 Release E2E against the Supabase cloud database: 7/7
 
 - `pnpm e2e:release` with API and worker on the cloud project (transaction pooler, TLS verified, lease-based ingest leader): payment, underpayment + top-up, expiry, subscribe, keeper charge, failed charge, wallet cancel — all pass in 9 minutes at `416b0c7`.
+
+### 2026-10-16 · S11 · deploy · milestone
+
+Testnet beta live on AWS; docs at the service root; remote E2E 6/6
+
+- ECS service `rodium-pay-staging` (1 Fargate Spot task: api + worker + signer, signer on localhost mTLS) in the shared `rodiumai-cluster`; own SG `rodium-pay-sg`, role `rodium-pay-ecs`, secret `rodium-pay/staging/app`, KMS `alias/rp-field-kek`, logs `/ecs/rodium-pay` (7 d). ALB rule priority **4** → `stelpay.forge.rodiumai.io` (the `*.forge` rule moved 4 → 5, content unchanged; reuses the forge wildcard DNS, so no DNS change). Every step fingerprinted before/after: existing services untouched. ~$7–8/month.
+- Docs site (`apps/docs`, served by the API at `/`, `/docs/*`) — checked with the Obscura headless browser (`--allow-private-network` for localhost). CodeQL (on now that the repo is public) caught a tag-stripping slug regex and a prefix host check; fixed.
+- `pnpm e2e:remote`: checkout payment, underpay + top-up, subscribe, keeper charge signed in AWS, wallet cancel — 6/6. First run had a false pass: the 10-minute charge _lease_ moves `next_charge_at`; only `current_period_end` (from the contract's `charged` event) proves a renewal.
+- Placeholders still to replace when the main app is ready: `WEBHOOK_URL=https://webhooks.invalid/rodium-pay`, `RETURN_URL_ORIGINS=https://rodiumai.io`.
