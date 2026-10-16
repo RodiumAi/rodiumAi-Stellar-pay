@@ -15,6 +15,7 @@ import {
 import {
   parseChargeOutcome,
   prepareCharge,
+  readPaused,
   readSubscription,
   submitAndWait,
   type SorobanClient,
@@ -84,6 +85,21 @@ export function createChargeJob(deps: ChargeDeps, intervalMs = 60_000): Job {
 
   const fail = async ({ sub, chargeId }: Claimed, code: string): Promise<void> => {
     const now = deps.now();
+    // A paused contract (kill switch, §20) refuses every charge: not the subscriber's fault.
+    // Leave the subscription untouched; the claim lease retries it once the pause lifts.
+    const paused = await readPaused(deps.chain, {
+      contractId: deps.contractId,
+      source: deps.keeper,
+      networkPassphrase: deps.networkPassphrase,
+    }).catch(() => null);
+    if (paused === true) {
+      await transitionCharge(deps.db, chargeId, 'scheduled', 'failed', { failureCode: 'paused' });
+      deps.logger.warn(
+        { alert: 'contract_paused', subscription_id: sub.id },
+        'contract paused; charge deferred, not counted as a failure',
+      );
+      return;
+    }
     // Error codes are only unique per contract (the USDC SAC's balance error is also #10),
     // so ask the chain whether the charge was actually due before calling it a failure.
     const onChain = await readSubscription(deps.chain, {
