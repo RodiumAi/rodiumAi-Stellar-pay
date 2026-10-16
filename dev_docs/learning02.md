@@ -181,3 +181,20 @@ Canceling an `incomplete` subscription violated the schema CHECK
 - What: API refused to boot: "RP_STELLAR_RPC_URL: Invalid URL" with the line present but empty.
 - Fix: `withoutEmpty()` drops empty/blank values before Zod in both config loaders; test added.
 - Verified: compiled API (`node --env-file=.env apps/api/dist/main.js`) against real Upstash, ExchangeRate-API and dev Postgres: ready 200; GHS 100 → 8.58 USDC at the live rate 11.6646; subscription created; unknown id 404. `pnpm api:call` is the signing reference for the main app.
+
+### 2026-10-16 · S6 · redis · bug
+
+`@upstash/redis` auto-decodes JSON on `get` → FX cache always missed
+
+- What: real-client test against Redis + serverless-redis-http: `get` returned `{ a: 1 }` for a stored `'{"a":1}'`.
+- Why: the client's `automaticDeserialization` defaults to on; the FX cache `JSON.parse`d an object, threw, and fell back to the provider on **every** quote (would burn the 1,500/month free quota).
+- Fix: `automaticDeserialization: false` in `main.ts` (documented on `createUpstashKv`).
+- Verified: two GHS quotes against real Upstash → 0 cache warnings, `rp:fx:usd` TTL 82,103 s (until the provider's next update).
+
+### 2026-10-16 · S6 · redis · fact
+
+`@upstash/ratelimit` scripts are Upstash-only
+
+- What: against self-hosted Redis 7.4 and 8.8: "ERR Unexpected flag in script shebang: allow-key-locking".
+- Decision: local/CI test proves the fail-open path (backstop keeps limiting); the live path is verified on real Upstash (0 fallbacks during smoke tests). `scripts/redis-local.sh` (Redis 8.8 + serverless-redis-http, pinned digests) covers the KvStore contract.
+- Also: SRH accepts commands as `POST /` with `content-type: application/json`, not `GET /ping`.
