@@ -10,7 +10,7 @@ Cap: 200 lines. When full, write a hand-off summary and continue in `learning04.
 
 Read in order: this section → hand-off at the bottom of `learning02.md` → `dev_docs/BUILD_PLAN.md` (current sprint) → the `docs/context.md` sections it cites. Or run `/resume`.
 
-**State (2026-10-16):** S0–S10 merged and tagged `v0.0.1`…`v0.10.0`. **Sprint 11** in-repo parts merged without a tag (release E2E `pnpm e2e:release` 7/7, `pnpm load:sanity`, §17 mainnet USDC verified). **Paused before the main-app integration — the user said "not yet" (2026-10-16); do not clone or change the main app until they say so.** Candidates found by code search for MoMo: `RodiumAi/rodiumai_backend_nestjs` (adapter/webhooks) and `RodiumAi/rodiumai_user_nextjs` (UI). External items left: Supabase scratch-project restore drill (needs Supabase access), staging on AWS + alerts firing (teammate), legal sign-off, Upstash plan/pricing, admin/merchant multisig. `v1.0.0-rc.1` waits for staging + the adapter.
+**State (2026-10-16):** S0–S10 tagged (`v0.10.0`); S11 in-repo parts merged (no tag). **Supabase cloud live** (project `sovqyegoxvmnqiomlbzq`, eu-west-1, transaction pooler only — session pooler unusable, worker uses a lease row); `.env` points at it (`.env.bak-*` keep the local versions). Release E2E 7/7 against the cloud DB. **AWS:** account `330990434320` eu-west-1, images in ECR, runtime ECS (assumed) — handover `docs/deploy/aws-handover.md`; ECR push waits for the teammate's OIDC role ARN → set repo variable `AWS_ECR_ROLE_ARN`. **Main-app integration paused (user: "not yet")** — ask first. Open: Supabase scratch-project restore drill, legal sign-off, multisig admin/merchant, soroban-sdk 29 re-check after 2026-10-21.
 
 **How to work (user preferences):**
 
@@ -184,3 +184,9 @@ Ingest leader by lease row instead of a session advisory lock
 - Why: the project's session pooler (5432) never answers a startup message (even for an unknown user, with or without TLS), while 6543 answers in ~1 s; the direct host is IPv6-only. Advisory locks need a dedicated session.
 - How: migration 0006 `leader_leases`; `tryAcquireLease` is one `INSERT … ON CONFLICT DO UPDATE … WHERE holder = me OR expires_at < now()` using the DB clock; the ingester renews before every page (30 s lease) and releases on shutdown. Matching is idempotent, so a stalled leader overlapping its successor is safe. `DATABASE_URL_WORKER_SESSION` removed everywhere. Verified against the cloud project: leader, lag 0, clean shutdown.
 - Also: re-running bootstrap re-sets passwords (new SCRAM salt) and Supavisor briefly rejects them (`28P01`) — setup retries for up to a minute.
+
+### 2026-10-16 · S11 · release · milestone
+
+Release E2E against the Supabase cloud database: 7/7
+
+- `pnpm e2e:release` with API and worker on the cloud project (transaction pooler, TLS verified, lease-based ingest leader): payment, underpayment + top-up, expiry, subscribe, keeper charge, failed charge, wallet cancel — all pass in 9 minutes at `416b0c7`.
