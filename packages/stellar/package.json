@@ -39,6 +39,11 @@
       "types": "./dist/sep7.d.ts",
       "default": "./dist/sep7.js"
     },
+    "./soroban": {
+      "@rp/source": "./src/soroban.ts",
+      "types": "./dist/soroban.d.ts",
+      "default": "./dist/soroban.js"
+    },
     "./subscribe-tx": {
       "@rp/source": "./src/subscribe-tx.ts",
       "types": "./dist/subscribe-tx.d.ts",
