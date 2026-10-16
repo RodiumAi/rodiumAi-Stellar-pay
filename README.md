@@ -123,7 +123,9 @@ under `/run/secrets`) and the CA file must be mounted at the path in `sslrootcer
 - **Images:** `infra/docker/Dockerfile` (`--target api|worker|signer`) — distroless, non-root,
   read-only filesystem, no shell. `.github/workflows/images.yml` publishes them to GHCR from `main`
   (and weekly), signed with cosign, with SBOM and SLSA provenance.
-- **Kubernetes:** `infra/k8s/base` + `overlays/staging` — restricted Pod Security, default-deny
+- **AWS (ECR + ECS):** step-by-step for the platform team in
+  [`docs/deploy/aws-handover.md`](docs/deploy/aws-handover.md).
+- **Kubernetes (alternative):** `infra/k8s/base` + `overlays/staging` — restricted Pod Security, default-deny
   network policies (the signer is reachable only from the worker and has no egress), secrets via
   the Secrets Store CSI driver, IRSA for AWS KMS. Admission policy in `infra/k8s/policies`.
 - **Observability:** Prometheus alerts in `infra/observability/alerts.yaml`; traces via OTLP when
