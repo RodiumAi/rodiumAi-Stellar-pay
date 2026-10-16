@@ -43,50 +43,59 @@ export async function bootstrapRoles(
 /**
  * Applies forward-only migrations as rp_owner, one transaction per file.
  * An applied file whose checksum changed aborts the run: migrations are never edited.
+ *
+ * Every step holds a transaction-scoped advisory lock and re-reads what is applied inside
+ * that transaction, so two concurrent runs never apply a file twice — and it works through
+ * Supavisor's transaction pooler, where a session lock could be taken and released on
+ * different server connections.
  */
 export async function migrate(owner: pg.ClientBase, dir: string): Promise<MigrationResult> {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- repo-controlled migrations dir
   const files = (await readdir(dir)).filter((f) => FILE_PATTERN.test(f)).sort();
-  await owner.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY.toString()]);
-  try {
-    await owner.query(`CREATE TABLE IF NOT EXISTS pay.schema_migrations (
+  const locked = async <T>(fn: () => Promise<T>): Promise<T> => {
+    await owner.query('BEGIN');
+    try {
+      await owner.query('SELECT pg_advisory_xact_lock($1)', [MIGRATION_LOCK_KEY.toString()]);
+      const result = await fn();
+      await owner.query('COMMIT');
+      return result;
+    } catch (e) {
+      await owner.query('ROLLBACK');
+      throw e;
+    }
+  };
+  await locked(() =>
+    owner.query(`CREATE TABLE IF NOT EXISTS pay.schema_migrations (
       version    text PRIMARY KEY,
       checksum   text NOT NULL,
-      applied_at timestamptz NOT NULL DEFAULT now())`);
-    const { rows } = await owner.query<{ version: string; checksum: string }>(
-      'SELECT version, checksum FROM pay.schema_migrations',
-    );
-    const done = new Map(rows.map((r) => [r.version, r.checksum]));
-    const applied: string[] = [];
-    const skipped: string[] = [];
-    for (const file of files) {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- name matched FILE_PATTERN
-      const sql = await readFile(join(dir, file), 'utf8');
-      const checksum = createHash('sha256').update(sql).digest('hex');
-      const previous = done.get(file);
+      applied_at timestamptz NOT NULL DEFAULT now())`),
+  );
+  const applied: string[] = [];
+  const skipped: string[] = [];
+  for (const file of files) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- name matched FILE_PATTERN
+    const sql = await readFile(join(dir, file), 'utf8');
+    const checksum = createHash('sha256').update(sql).digest('hex');
+    const outcome = await locked(async () => {
+      const { rows } = await owner.query<{ checksum: string }>(
+        'SELECT checksum FROM pay.schema_migrations WHERE version = $1',
+        [file],
+      );
+      const previous = rows[0]?.checksum;
       if (previous !== undefined) {
         if (previous !== checksum) {
           throw new Error(`Migration ${file} was modified after being applied`);
         }
-        skipped.push(file);
-        continue;
+        return 'skipped' as const;
       }
-      await owner.query('BEGIN');
-      try {
-        await owner.query(sql);
-        await owner.query('INSERT INTO pay.schema_migrations (version, checksum) VALUES ($1, $2)', [
-          file,
-          checksum,
-        ]);
-        await owner.query('COMMIT');
-      } catch (e) {
-        await owner.query('ROLLBACK');
-        throw e;
-      }
-      applied.push(file);
-    }
-    return { applied, skipped };
-  } finally {
-    await owner.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY.toString()]);
+      await owner.query(sql);
+      await owner.query('INSERT INTO pay.schema_migrations (version, checksum) VALUES ($1, $2)', [
+        file,
+        checksum,
+      ]);
+      return 'applied' as const;
+    });
+    (outcome === 'applied' ? applied : skipped).push(file);
   }
+  return { applied, skipped };
 }

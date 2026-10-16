@@ -167,3 +167,12 @@ A slow subscribe confirmation left a paid subscription `incomplete` forever
 - What: found while writing the integration guide: if checkout's wait for the subscribe transaction timed out, the API answered `submitted` and relied on the worker — but contract-event sync finds rows by `contract_subscription_id`, which only activation sets. User paid and approved; no `subscription.activated`, no charges.
 - Fix: migration 0005 `activation_tx_hash`; checkout records hash + subscriber + allowance before sending; the worker matches `sub_created` by transaction hash (subscriber and plan must match) and activates + emits `subscription.activated`. Regression test (incl. a mismatched wallet); subscription testnet E2E 4/4.
 - Prevent: every "the worker will pick it up" comment needs a test that the worker can actually find the row.
+
+### 2026-10-16 · S11 · db · bug
+
+Cloud Supabase: session pooler resets; migrations needed session mode
+
+- What: first `pnpm db:setup:supabase` run: `cannot connect as postgres (ECONNRESET)`. Port 6543 (transaction pooler) works; 5432 (session pooler) completes TLS, then resets after ~20 s with no Postgres error. The direct host is IPv6-only and this Mac has no IPv6. (Also: the pasted URL ended in `/postgresnot` — fixed in place.)
+- Why it mattered: the migration runner held a session advisory lock — unsafe through a transaction pooler (lock and unlock can hit different server connections).
+- Fix: migrations take `pg_advisory_xact_lock` per file and re-check `schema_migrations` inside that transaction (concurrency test added); setup falls back to 6543 and warns that the worker's `DATABASE_URL_WORKER_SESSION` (ingest leader lock) still needs session mode.
+- Open: session pooling on project `sovqyegoxvmnqiomlbzq` must be fixed in the dashboard before the worker runs against it. API verified against the cloud project (ready + a payment created).

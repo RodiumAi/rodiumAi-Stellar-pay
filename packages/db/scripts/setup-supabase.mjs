@@ -60,14 +60,40 @@ const passwords = Object.fromEntries(
 );
 
 const client = (user, password, port) =>
-  new pg.Client({ host, port, user: `${user}.${ref}`, password, database: 'postgres', ssl });
+  new pg.Client({
+    host,
+    port,
+    user: `${user}.${ref}`,
+    password,
+    database: 'postgres',
+    ssl,
+    connectionTimeoutMillis: 10_000,
+  });
+const tryConnect = async (c) => {
+  c.on('error', () => undefined);
+  try {
+    await c.connect();
+    return null;
+  } catch (e) {
+    return e.code ?? e.message.split('\n')[0];
+  }
+};
 
 // 1. Admin connection: TLS verified against the pinned CA, Postgres major must match local.
-const a = client('postgres', decodeURIComponent(admin.password), 5432);
-try {
-  await a.connect();
-} catch (e) {
-  fail(`cannot connect as postgres (${e.code ?? e.message.split('\n')[0]})`);
+// Prefer the session pooler (5432); bootstrap and migrations are transaction-safe, so the
+// transaction pooler (6543) works too if session mode is unavailable for the project.
+const adminPassword = decodeURIComponent(admin.password);
+let setupPort = 5432;
+let a = client('postgres', adminPassword, 5432);
+const sessionError = await tryConnect(a);
+if (sessionError !== null) {
+  console.warn(
+    `! session pooler (5432) unavailable (${sessionError}); using the transaction pooler (6543)`,
+  );
+  setupPort = 6543;
+  a = client('postgres', adminPassword, 6543);
+  const txError = await tryConnect(a);
+  if (txError !== null) fail(`cannot connect as postgres on 5432 or 6543 (${txError})`);
 }
 const { rows } = await a.query("SELECT current_setting('server_version_num')::int AS v");
 const major = Math.floor(rows[0].v / 10000);
@@ -79,9 +105,10 @@ await bootstrapRoles(a, readFileSync('infra/supabase/bootstrap-roles.sql', 'utf8
 await a.end();
 console.log(`✓ roles rp_owner, rp_api, rp_worker, rp_readonly ${rotate ? 'rotated' : 'ready'}`);
 
-// 3. Migrations as rp_owner over the session pooler (5432).
-const o = client('rp_owner', passwords.owner, 5432);
-await o.connect();
+// 3. Migrations as rp_owner (transaction-scoped locks: safe on either pooler).
+const o = client('rp_owner', passwords.owner, setupPort);
+const ownerError = await tryConnect(o);
+if (ownerError !== null) fail(`cannot connect as rp_owner (${ownerError})`);
 const result = await migrate(o, 'packages/db/migrations');
 await o.end();
 console.log(
@@ -121,17 +148,33 @@ writeFileSync('.env', lines.join('\n').replace(/\n*$/, '\n'), { mode: 0o600 });
 console.log(`✓ .env updated (previous version saved as ${backup}, mode 600)`);
 
 // 5. Each service role connects through its pooler and sees the schema.
+let sessionBroken = sessionError !== null;
 for (const [name, role] of [
   ['DATABASE_URL_API', 'rp_api'],
   ['DATABASE_URL_WORKER', 'rp_worker'],
   ['DATABASE_URL_WORKER_SESSION', 'rp_worker'],
   ['DATABASE_URL_READONLY', 'rp_readonly'],
 ]) {
-  const c = new pg.Client({ connectionString: urls[name] });
-  await c.connect();
+  const c = new pg.Client({ connectionString: urls[name], connectionTimeoutMillis: 10_000 });
+  const error = await tryConnect(c);
+  if (error !== null) {
+    if (name === 'DATABASE_URL_WORKER_SESSION') {
+      sessionBroken = true;
+      console.warn(`! ${name}: session pooler not reachable (${error})`);
+      continue;
+    }
+    fail(`${name}: cannot connect (${error})`);
+  }
   const r = await c.query('SELECT current_user AS u, count(*)::int AS n FROM pay.payments');
   await c.end();
   if (r.rows[0].u !== role) fail(`${name} connected as ${r.rows[0].u}, expected ${role}`);
   console.log(`✓ ${name}: connects as ${role}`);
+}
+if (sessionBroken) {
+  console.warn(
+    '! The worker needs session mode (DATABASE_URL_WORKER_SESSION, port 5432) for its ingest\n' +
+      '  leader lock. The API works now; fix session pooling before running the worker against\n' +
+      '  this project (Dashboard → Database → Settings → Connection pooling).',
+  );
 }
 console.log('Done. Next: pnpm build:all && pnpm api:start (it now uses the Supabase project).');

@@ -1,4 +1,4 @@
-import { cp, mkdtemp, appendFile } from 'node:fs/promises';
+import { cp, mkdtemp, appendFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,19 @@ describe('migrations', () => {
       '0004_api_records_allowance.sql',
       '0005_subscription_activation_tx.sql',
     ]);
+  });
+
+  it('two concurrent runs apply a new migration exactly once', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rp-migrations-'));
+    await cp(migrationsDir, dir, { recursive: true });
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- temp dir created above
+    await writeFile(join(dir, '9999_concurrency_probe.sql'), 'SELECT pg_sleep(0.3);\n');
+    const [a, b] = await Promise.all([
+      withOwner((c) => migrate(c, dir)),
+      withOwner((c) => migrate(c, dir)),
+    ]);
+    expect([...a.applied, ...b.applied]).toEqual(['9999_concurrency_probe.sql']);
+    expect([...a.skipped, ...b.skipped].filter((f) => f.startsWith('9999'))).toHaveLength(1);
   });
 
   it('refuses to run when an applied migration was edited', async () => {
