@@ -1,0 +1,27 @@
+# Optional (Cilium CNI): exact host allowlists for egress. Replace the placeholder hosts
+# with the environment's values, rename to .yaml and add it to the overlay's resources.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: rp-egress-fqdn
+spec:
+  endpointSelector:
+    matchExpressions:
+      - { key: app.kubernetes.io/name, operator: In, values: [rp-api, rp-worker] }
+  egress:
+    - toEndpoints:
+        - matchLabels: { k8s:io.kubernetes.pod.namespace: kube-system, k8s-app: kube-dns }
+      toPorts:
+        - ports: [{ port: '53', protocol: ANY }]
+          rules: { dns: [{ matchPattern: '*' }] }
+    - toFQDNs:
+        - matchName: aws-0-eu-west-1.pooler.supabase.com # Supabase pooler
+        - matchName: example.upstash.io # Upstash REST
+        - matchName: soroban-testnet.stellar.org
+        - matchName: horizon-testnet.stellar.org
+        - matchName: v6.exchangerate-api.com
+        - matchName: kms.eu-west-1.amazonaws.com
+        - matchName: sts.eu-west-1.amazonaws.com
+        - matchName: app.example.com # main-app webhook receiver (worker)
+      toPorts:
+        - ports: [{ port: '443' }, { port: '5432' }, { port: '6543' }]

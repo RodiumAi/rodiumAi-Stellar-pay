@@ -1,0 +1,41 @@
+# Admission policy (Kyverno): pods in rodium-pay may run only images built by this
+# repository's images workflow on main, signed keylessly with cosign, referenced by digest.
+# Cluster add-on owned by the platform team; apply after installing Kyverno.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: rodium-pay-verify-images
+spec:
+  validationFailureAction: Enforce
+  webhookTimeoutSeconds: 15
+  rules:
+    - name: signed-by-images-workflow
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rodium-pay]
+      verifyImages:
+        - imageReferences: ['ghcr.io/rodiumai/rp-*']
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subject: https://github.com/RodiumAi/rodiumAi-Stellar-pay/.github/workflows/images.yml@refs/heads/main
+                    rekor:
+                      url: https://rekor.sigstore.dev
+    - name: only-our-images
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [rodium-pay]
+      validate:
+        message: rodium-pay runs only ghcr.io/rodiumai/rp-* images.
+        pattern:
+          spec:
+            containers:
+              - image: 'ghcr.io/rodiumai/rp-*'

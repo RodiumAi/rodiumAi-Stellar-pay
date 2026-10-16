@@ -1,0 +1,117 @@
+# Weekly encrypted logical export (context §7.6). Supabase PITR stays the first line of
+# recovery; this copy lives in separate object storage so recovery does not depend on one
+# vendor account. The age private key is NOT in the cluster — only its public recipient.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rp-backup
+spec:
+  schedule: '23 3 * * 0'
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 4
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels: { app.kubernetes.io/name: rp-backup }
+        spec:
+          restartPolicy: Never
+          serviceAccountName: rp-backup
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            fsGroup: 70
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: export
+              image: rp-backup
+              env:
+                - { name: DATABASE_URL_FILE, value: /run/secrets/DATABASE_URL_BACKUP }
+                - name: AGE_RECIPIENTS
+                  valueFrom: { configMapKeyRef: { name: rp-backup-config, key: AGE_RECIPIENTS } }
+                - name: BACKUP_S3_URI
+                  valueFrom: { configMapKeyRef: { name: rp-backup-config, key: BACKUP_S3_URI } }
+                - { name: OUT_DIR, value: /scratch }
+              # export.sh reads DATABASE_URL; resolve the mounted file first.
+              command:
+                [
+                  '/bin/sh',
+                  '-c',
+                  'DATABASE_URL="$(cat "$DATABASE_URL_FILE")" exec /usr/local/bin/export.sh',
+                ]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: [ALL] }
+              resources:
+                requests: { cpu: 100m, memory: 128Mi }
+                limits: { memory: 512Mi }
+              volumeMounts:
+                - { name: secrets, mountPath: /run/secrets, readOnly: true }
+                - { name: scratch, mountPath: /scratch }
+          volumes:
+            - name: secrets
+              csi:
+                driver: secrets-store.csi.k8s.io
+                readOnly: true
+                volumeAttributes: { secretProviderClass: rp-backup }
+            # Only the encrypted file is written here, then uploaded and deleted.
+            - name: scratch
+              emptyDir: { sizeLimit: 2Gi }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rp-backup-config
+data:
+  AGE_RECIPIENTS: age1REPLACE_WITH_RECIPIENT
+  BACKUP_S3_URI: s3://REPLACE-rodium-pay-backups/staging/
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rp-backup
+  # Role may only s3:PutObject into the backup prefix (no read, no delete: object lock).
+  annotations: { eks.amazonaws.com/role-arn: 'arn:aws:iam::000000000000:role/REPLACE-rp-backup' }
+automountServiceAccountToken: false
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: rp-backup
+spec:
+  provider: aws
+  parameters:
+    objects: |
+      - { objectName: rodium-pay/backup/DATABASE_URL_BACKUP, objectType: secretsmanager, objectAlias: DATABASE_URL_BACKUP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rp-backup
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: rp-backup }
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 5432 }

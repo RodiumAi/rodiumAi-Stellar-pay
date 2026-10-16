@@ -1,0 +1,14 @@
+# Staging on testnet. Image digests are set by the release workflow (cosign-signed).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - { name: rp-api, newName: ghcr.io/rodiumai/rp-api, newTag: staging }
+  - { name: rp-worker, newName: ghcr.io/rodiumai/rp-worker, newTag: staging }
+  - { name: rp-signer, newName: ghcr.io/rodiumai/rp-signer, newTag: staging }
+  - { name: rp-backup, newName: ghcr.io/rodiumai/rp-backup, newTag: staging }
+patches:
+  - target: { kind: ConfigMap, name: rp-config }
+    patch: |
+      - { op: replace, path: /data/LOG_LEVEL, value: debug }

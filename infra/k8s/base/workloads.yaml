@@ -1,0 +1,220 @@
+# Shared hardening on every pod (context §16.3): non-root, read-only root filesystem,
+# no privilege escalation, all capabilities dropped, RuntimeDefault seccomp, no
+# Kubernetes API token. Secrets come from AWS Secrets Manager through the Secrets Store
+# CSI driver at /run/secrets and are read with FOO_FILE=/run/secrets/foo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rp-api
+  labels: { app.kubernetes.io/name: rp-api }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: rp-api }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: rp-api }
+    spec:
+      serviceAccountName: rp-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: api
+          image: rp-api
+          ports: [{ name: http, containerPort: 8080 }]
+          envFrom:
+            - configMapRef: { name: rp-config }
+          env:
+            - { name: API_HMAC_KEYS_FILE, value: /run/secrets/API_HMAC_KEYS }
+            - { name: CHECKOUT_TOKEN_KEY_FILE, value: /run/secrets/CHECKOUT_TOKEN_KEY }
+            - { name: BLIND_INDEX_KEY_FILE, value: /run/secrets/BLIND_INDEX_KEY }
+            - { name: EXCHANGERATE_API_KEY_FILE, value: /run/secrets/EXCHANGERATE_API_KEY }
+            - name: UPSTASH_REDIS_REST_TOKEN_FILE
+              value: /run/secrets/UPSTASH_REDIS_REST_TOKEN
+            - { name: DATABASE_URL_API_FILE, value: /run/secrets/DATABASE_URL_API }
+            - { name: FIELD_DATA_KEYS_FILE, value: /run/secrets/FIELD_DATA_KEYS }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 384Mi }
+          readinessProbe:
+            httpGet: { path: /v1/health/ready, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            periodSeconds: 20
+          volumeMounts:
+            - { name: secrets, mountPath: /run/secrets, readOnly: true }
+      volumes:
+        - name: secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes: { secretProviderClass: rp-api }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rp-worker
+  labels: { app.kubernetes.io/name: rp-worker }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: rp-worker }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: rp-worker }
+    spec:
+      serviceAccountName: rp-worker
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: worker
+          image: rp-worker
+          ports: [{ name: metrics, containerPort: 9090 }]
+          envFrom:
+            - configMapRef: { name: rp-config }
+          env:
+            - { name: SIGNER_URL, value: 'https://rp-signer:9443' }
+            - { name: WORKER_TLS_KEY, value: /run/mtls/tls.key }
+            - { name: WORKER_TLS_CERT, value: /run/mtls/tls.crt }
+            - { name: WORKER_TLS_CA, value: /run/mtls/ca.crt }
+            - { name: WEBHOOK_SIGNING_KEY_PEM_FILE, value: /run/secrets/WEBHOOK_SIGNING_KEY_PEM }
+            - { name: DATABASE_URL_WORKER_FILE, value: /run/secrets/DATABASE_URL_WORKER }
+            - name: DATABASE_URL_WORKER_SESSION_FILE
+              value: /run/secrets/DATABASE_URL_WORKER_SESSION
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 384Mi }
+          livenessProbe:
+            httpGet: { path: /health/live, port: metrics }
+            periodSeconds: 20
+          volumeMounts:
+            - { name: secrets, mountPath: /run/secrets, readOnly: true }
+            - { name: mtls, mountPath: /run/mtls, readOnly: true }
+      volumes:
+        - name: secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes: { secretProviderClass: rp-worker }
+        # Issued by cert-manager from the private CA (CN rp-worker), rotated every 30 days.
+        - name: mtls
+          secret: { secretName: rp-worker-mtls }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rp-signer
+  labels: { app.kubernetes.io/name: rp-signer }
+spec:
+  # One replica: the keeper account's sequence number is the bottleneck anyway.
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: rp-signer }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: rp-signer }
+    spec:
+      serviceAccountName: rp-signer
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: signer
+          image: rp-signer
+          ports:
+            - { name: mtls, containerPort: 9443 }
+            - { name: metrics, containerPort: 9444 }
+          envFrom:
+            - configMapRef: { name: rp-signer-config }
+          env:
+            - { name: SIGNER_TLS_KEY, value: /run/secrets/mtls/tls.key }
+            - { name: SIGNER_TLS_CERT, value: /run/secrets/mtls/tls.crt }
+            - { name: SIGNER_TLS_CA, value: /run/secrets/mtls/ca.crt }
+            - { name: KEEPER_SECRET_FILE, value: /run/secrets/keeper/KEEPER_SECRET }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          # mTLS-only port: probe the TCP socket (an HTTP probe has no client certificate).
+          livenessProbe:
+            tcpSocket: { port: mtls }
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket: { port: mtls }
+            periodSeconds: 10
+          volumeMounts:
+            - { name: keeper, mountPath: /run/secrets/keeper, readOnly: true }
+            - { name: mtls, mountPath: /run/secrets/mtls, readOnly: true }
+      volumes:
+        - name: keeper
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes: { secretProviderClass: rp-signer }
+        - name: mtls
+          secret: { secretName: rp-signer-mtls }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rp-api
+spec:
+  selector: { app.kubernetes.io/name: rp-api }
+  ports: [{ name: http, port: 8080, targetPort: http }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rp-signer
+spec:
+  selector: { app.kubernetes.io/name: rp-signer }
+  ports: [{ name: mtls, port: 9443, targetPort: mtls }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rp-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: rp-api }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rp-worker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: rp-worker }

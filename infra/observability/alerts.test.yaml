@@ -1,0 +1,61 @@
+# promtool unit tests for alerts.yaml (CI extracts its spec to rules.yaml next to this file).
+rule_files: [rules.yaml]
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'signer_rejections_total{pod="rp-signer-0"}'
+        values: '0 0 1 1 1'
+      - series: 'receipts_unmatched_open{pod="rp-worker-0"}'
+        values: '0 1 1 1 1'
+      - series: 'keeper_balance_xlm{pod="rp-worker-0"}'
+        values: '40x15'
+      - series: 'ingest_is_leader{pod="rp-worker-0"}'
+        values: '0x10'
+      - series: 'mtls_cert_not_after_timestamp_seconds{pod="rp-worker-0"}'
+        values: '864000x5' # 10 days after the epoch the test clock starts at
+      - series: 'webhooks_dead{pod="rp-worker-0"}'
+        values: '0 0 2 2'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: SignerRejection
+        exp_alerts:
+          - exp_labels: { severity: page, pod: rp-signer-0 }
+            exp_annotations:
+              summary: The keeper signer refused a transaction — possible bug or tampering
+              runbook: docs/runbooks/keeper-compromise.md
+      - eval_time: 2m
+        alertname: UnmatchedReceipt
+        exp_alerts:
+          - exp_labels: { severity: ticket }
+            exp_annotations:
+              summary: '1 unmatched receipt(s) need manual handling'
+              runbook: docs/runbooks/unmatched-payment.md
+      - eval_time: 12m
+        alertname: KeeperBalanceLow
+        exp_alerts:
+          - exp_labels: { severity: ticket }
+            exp_annotations:
+              summary: Keeper balance 40 XLM — top up before charges fail on fees
+              runbook: docs/runbooks/keeper-compromise.md
+      - eval_time: 6m
+        alertname: NoIngestLeader
+        exp_alerts:
+          - exp_labels: { severity: page }
+            exp_annotations:
+              summary: No worker holds the ingest lock — payments are not being detected
+              runbook: docs/runbooks/ingestion-stuck.md
+      - eval_time: 1m
+        alertname: CertificateExpiresSoon
+        exp_alerts:
+          - exp_labels: { severity: ticket, pod: rp-worker-0 }
+            exp_annotations:
+              summary: mTLS certificate in rp-worker-0 expires within 14 days — renewal or reload stuck
+              runbook: docs/runbooks/rotation.md
+      - eval_time: 3m
+        alertname: WebhookDeadLetters
+        exp_alerts:
+          - exp_labels: { severity: ticket }
+            exp_annotations:
+              summary: '2 webhook event(s) dead-lettered'
+              runbook: docs/runbooks/README.md
