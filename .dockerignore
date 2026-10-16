@@ -9,6 +9,7 @@
 !apps/
 !packages/
 !scripts/backup/
+!infra/supabase/supabase-root-2021-ca.crt
 apps/*/dist
 apps/*/node_modules
 apps/*/scripts

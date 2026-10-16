@@ -42,12 +42,15 @@ ENTRYPOINT ["/nodejs/bin/node"]
 
 FROM runtime AS api
 COPY --from=build /out/api /app
+# Public Supabase root CA for sslmode=verify-full (sslrootcert=/app/certs/…).
+COPY infra/supabase/supabase-root-2021-ca.crt /app/certs/supabase-root-2021-ca.crt
 ENV CHECKOUT_ASSETS_DIR=/app/checkout
 EXPOSE 8080
 CMD ["dist/main.js"]
 
 FROM runtime AS worker
 COPY --from=build /out/worker /app
+COPY infra/supabase/supabase-root-2021-ca.crt /app/certs/supabase-root-2021-ca.crt
 EXPOSE 9090
 CMD ["dist/main.js"]
 

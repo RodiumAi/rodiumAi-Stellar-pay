@@ -87,4 +87,16 @@ describe('mTLS files (context §12.1)', () => {
     now = 5000;
     expect(tls.current().cert.equals(a.cert)).toBe(true);
   });
+
+  it('accepts the PEM itself instead of a path (ECS secrets arrive as env vars)', () => {
+    const tls = createTlsFiles({
+      keyPath: a.key.toString(),
+      certPath: a.cert.toString().replaceAll('\n', '\\n'), // escaped newlines, as in .env files
+      caPath: a.cert.toString(),
+    });
+    const m = tls.current();
+    expect(m.key.equals(a.key)).toBe(true);
+    expect(m.cert.toString().trim()).toBe(a.cert.toString().trim());
+    expect(m.notAfterSeconds).toBeGreaterThan(Date.now() / 1000);
+  });
 });

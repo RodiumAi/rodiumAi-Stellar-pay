@@ -6,5 +6,6 @@ FROM docker.io/library/postgres:17.6-alpine3.22@sha256:ef257d85f76e48da1c6483245
 # gosu: the job never starts as root, and it is an old Go binary Trivy flags.
 RUN apk upgrade --no-cache && apk add --no-cache age aws-cli && rm -f /usr/local/bin/gosu
 COPY scripts/backup/export.sh scripts/backup/restore.sh /usr/local/bin/
+COPY infra/supabase/supabase-root-2021-ca.crt /etc/ssl/supabase-root-2021-ca.crt
 USER postgres
 ENTRYPOINT ["/usr/local/bin/export.sh"]
