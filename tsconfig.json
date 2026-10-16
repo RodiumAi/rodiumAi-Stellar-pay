@@ -6,6 +6,7 @@
     { "path": "packages/security" },
     { "path": "packages/db" },
     { "path": "packages/stellar" },
+    { "path": "packages/telemetry" },
     { "path": "apps/api" },
     { "path": "apps/worker" },
     { "path": "apps/signer" },

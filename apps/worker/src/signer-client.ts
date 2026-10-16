@@ -1,5 +1,6 @@
 import { request } from 'node:https';
 import { err, ok, type Result } from '@rp/core/result';
+import { SpanKind, traceHeaders, withSpan } from '@rp/telemetry/tracing';
 
 export interface SignerClient {
   sign(xdr: string): Promise<Result<string, string>>;
@@ -14,45 +15,61 @@ export function createSignerClient(o: {
   const target = new URL('/v1/sign', o.url);
   return {
     sign(xdr) {
-      const { key, cert, ca } = o.tls();
-      return new Promise((resolve) => {
-        const req = request(
-          target,
-          {
-            method: 'POST',
-            key,
-            cert,
-            ca,
-            minVersion: 'TLSv1.3',
-            timeout: 10_000,
-            headers: { 'content-type': 'application/json' },
-          },
-          (res) => {
-            const chunks: Buffer[] = [];
-            res.on('data', (c: Buffer) => chunks.push(c));
-            res.on('end', () => {
-              try {
-                const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
-                  signed_xdr?: string;
-                  error?: string;
-                };
-                resolve(
-                  res.statusCode === 200 && typeof body.signed_xdr === 'string'
-                    ? ok(body.signed_xdr)
-                    : err(body.error ?? `HTTP ${String(res.statusCode)}`),
-                );
-              } catch {
-                resolve(err('signer_bad_response'));
-              }
-            });
-          },
-        );
-        req.on('timeout', () => req.destroy(new Error('signer timeout')));
-        req.on('error', (e) => {
-          resolve(err(`signer_unreachable: ${e.message}`));
-        });
-        req.end(JSON.stringify({ xdr }));
-      });
+      return withSpan(
+        'signer.sign',
+        {},
+        (span) =>
+          send(xdr).then((r) => {
+            span.setAttribute(
+              'rp.signer.result',
+              r.ok ? 'signed' : (r.error.split(':')[0] ?? 'error'),
+            );
+            return r;
+          }),
+        SpanKind.CLIENT,
+      );
     },
   };
+
+  function send(xdr: string): Promise<Result<string, string>> {
+    const { key, cert, ca } = o.tls();
+    return new Promise((resolve) => {
+      const req = request(
+        target,
+        {
+          method: 'POST',
+          key,
+          cert,
+          ca,
+          minVersion: 'TLSv1.3',
+          timeout: 10_000,
+          headers: { 'content-type': 'application/json', ...traceHeaders() },
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => {
+            try {
+              const body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+                signed_xdr?: string;
+                error?: string;
+              };
+              resolve(
+                res.statusCode === 200 && typeof body.signed_xdr === 'string'
+                  ? ok(body.signed_xdr)
+                  : err(body.error ?? `HTTP ${String(res.statusCode)}`),
+              );
+            } catch {
+              resolve(err('signer_bad_response'));
+            }
+          });
+        },
+      );
+      req.on('timeout', () => req.destroy(new Error('signer timeout')));
+      req.on('error', (e) => {
+        resolve(err(`signer_unreachable: ${e.message}`));
+      });
+      req.end(JSON.stringify({ xdr }));
+    });
+  }
 }

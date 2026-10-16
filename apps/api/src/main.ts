@@ -7,6 +7,7 @@ import { createAwsKms } from '@rp/security/aws-kms';
 import { loadKeyring } from '@rp/security/envelope';
 import { createLocalDevKms, type Kms } from '@rp/security/kms';
 import { createLogger } from '@rp/security/logger';
+import { startTracing } from '@rp/telemetry/tracing';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { rpc } from '@stellar/stellar-sdk';
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   const api = loadApiConfig(env.value);
   if (!api.ok) fail(api.error);
   const logger = createLogger({ level: app.value.logLevel, service: 'api' });
+  const tracing = startTracing({ service: 'rp-api', env: env.value });
 
   let kms: Kms;
   if (api.value.awsKmsKeyId !== null) {
@@ -132,7 +134,7 @@ async function main(): Promise<void> {
     timer.unref();
     void server
       .close()
-      .then(() => pool.end())
+      .then(() => Promise.all([pool.end(), tracing.shutdown()]))
       .then(() => process.exit(0));
   };
   process.once('SIGTERM', () => {

@@ -187,7 +187,9 @@ const charges = (subscriptionId: string) =>
     .selectFrom('subscription_charges')
     .selectAll()
     .where('subscription_id', '=', subscriptionId)
-    .orderBy('created_at')
+    // created_at can tie within one test; the charge's own keys give a stable order.
+    .orderBy('period_index')
+    .orderBy('attempt')
     .execute();
 const events = (aggregateId: string) =>
   worker

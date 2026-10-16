@@ -53,6 +53,8 @@ export function createSigner(o: SignerOptions): {
       minVersion: 'TLSv1.3',
     },
     (req, res) => {
+      // The signer exports no spans (no egress); the worker's trace id ties its logs in.
+      const trace = traceIdOf(req.headers['traceparent']);
       const peer = (req.socket as TLSSocket).getPeerCertificate();
       if (peer.subject.CN !== ALLOWED_CLIENT_CN) {
         o.logger.warn(
@@ -84,7 +86,7 @@ export function createSigner(o: SignerOptions): {
         } catch {
           stats.rejected += 1;
           o.logger.warn(
-            { security: true, decision: 'reject', reason: 'malformed_request' },
+            { security: true, decision: 'reject', reason: 'malformed_request', ...trace },
             'signer decision',
           );
           send(res, 400, { error: 'malformed_request' });
@@ -98,7 +100,7 @@ export function createSigner(o: SignerOptions): {
         if (!guard.ok) {
           stats.rejected += 1;
           o.logger.warn(
-            { security: true, decision: 'reject', reason: guard.error },
+            { security: true, decision: 'reject', reason: guard.error, ...trace },
             'signer decision',
           );
           send(res, 422, { error: guard.error });
@@ -106,7 +108,7 @@ export function createSigner(o: SignerOptions): {
         }
         guard.value.transaction.sign(o.keeper);
         stats.signed += 1;
-        o.logger.info({ decision: 'sign', tx_hash: guard.value.hash }, 'signer decision');
+        o.logger.info({ decision: 'sign', tx_hash: guard.value.hash, ...trace }, 'signer decision');
         send(res, 200, { signed_xdr: guard.value.transaction.toXdr(), hash: guard.value.hash });
       });
     },
@@ -118,4 +120,12 @@ export function createSigner(o: SignerOptions): {
       server.setSecureContext({ key: tls.key, cert: tls.cert, ca: tls.ca, minVersion: 'TLSv1.3' });
     },
   };
+}
+
+const TRACEPARENT = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/;
+
+/** `trace_id` from a W3C traceparent header, for log correlation. */
+export function traceIdOf(header: string | string[] | undefined): { trace_id?: string } {
+  const m = typeof header === 'string' ? TRACEPARENT.exec(header) : null;
+  return m?.[1] === undefined ? {} : { trace_id: m[1] };
 }

@@ -18,7 +18,7 @@ import {
   type xdr,
 } from '@stellar/stellar-sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createSigner } from './signer.js';
+import { createSigner, traceIdOf } from './signer.js';
 
 const NOW = Math.floor(Date.now() / 1000);
 const keeper = Keypair.random();
@@ -249,5 +249,15 @@ describe('keeper signer (context §14.5)', () => {
         ca: file(dir, 'ca.crt'),
       });
     }
+  });
+});
+
+describe('trace correlation', () => {
+  it('takes trace_id only from a well-formed W3C traceparent', () => {
+    const id = 'a'.repeat(32);
+    expect(traceIdOf(`00-${id}-${'b'.repeat(16)}-01`)).toEqual({ trace_id: id });
+    expect(traceIdOf(`00-${id}-short-01`)).toEqual({});
+    expect(traceIdOf(['x', 'y'])).toEqual({});
+    expect(traceIdOf(undefined)).toEqual({});
   });
 });

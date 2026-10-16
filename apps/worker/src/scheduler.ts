@@ -1,3 +1,4 @@
+import { withSpan } from '@rp/telemetry/tracing';
 import type { Logger } from 'pino';
 
 export interface Job {
@@ -38,7 +39,7 @@ export function startScheduler(jobs: readonly Job[], logger: JobLogger): Schedul
   const loops = jobs.map(async (job) => {
     while (!controller.signal.aborted) {
       try {
-        await job.run(controller.signal);
+        await withSpan(`job ${job.name}`, { 'rp.job': job.name }, () => job.run(controller.signal));
       } catch (error) {
         logger.error({ err: error, job: job.name }, 'job pass failed');
       }

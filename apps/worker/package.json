@@ -9,6 +9,7 @@
     "@rp/db": "workspace:*",
     "@rp/security": "workspace:*",
     "@rp/stellar": "workspace:*",
+    "@rp/telemetry": "workspace:*",
     "@stellar/stellar-sdk": "17.2.1",
     "kysely": "0.29.6",
     "pg": "8.23.1",
