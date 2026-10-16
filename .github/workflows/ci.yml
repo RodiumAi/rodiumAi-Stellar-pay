@@ -180,3 +180,101 @@ jobs:
           output: sarif
       # Blocks on high/critical findings (security-severity >= 7.0, context §16.1).
       - run: python3 scripts/sarif-gate.py sarif/*.sarif
+
+  # Images (context §16.3): distroless, non-root, read-only, no shell; zero high/critical.
+  containers:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [api, worker, signer, backup]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install trivy
+        env:
+          TRIVY_VERSION: 0.75.0
+          TRIVY_SHA256: c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f
+        run: |
+          curl -sSfL -o trivy.tgz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tgz" | sha256sum --check
+          tar -xzf trivy.tgz trivy && sudo mv trivy /usr/local/bin/ && rm trivy.tgz
+      - name: build
+        run: |
+          if [ "${{ matrix.app }}" = backup ]; then
+            docker build -f infra/docker/Dockerfile.backup -t rp-backup:ci .
+          else
+            docker build -f infra/docker/Dockerfile --target ${{ matrix.app }} -t rp-${{ matrix.app }}:ci .
+          fi
+      # The backup job image needs a shell for pg_dump | age; the services must not have one.
+      - name: hardening checks
+        if: matrix.app != 'backup'
+        run: ./scripts/check-image.sh rp-${{ matrix.app }}:ci
+      - name: trivy (high/critical fail the build)
+        run: |
+          trivy image --no-progress --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+            rp-${{ matrix.app }}:ci
+      - name: SBOM (CycloneDX)
+        run: trivy image --no-progress --format cyclonedx --output sbom-${{ matrix.app }}.cdx.json rp-${{ matrix.app }}:ci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom-${{ matrix.app }}
+          path: sbom-${{ matrix.app }}.cdx.json
+
+  # Kubernetes manifests: schema validation and misconfiguration scan.
+  iac:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install trivy and kubeconform
+        env:
+          TRIVY_VERSION: 0.75.0
+          TRIVY_SHA256: c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f
+          KUBECONFORM_VERSION: 0.8.0
+          KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+        run: |
+          curl -sSfL -o trivy.tgz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tgz" | sha256sum --check
+          curl -sSfL -o kubeconform.tgz \
+            "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz"
+          echo "${KUBECONFORM_SHA256}  kubeconform.tgz" | sha256sum --check
+          tar -xzf trivy.tgz trivy && tar -xzf kubeconform.tgz kubeconform
+          sudo mv trivy kubeconform /usr/local/bin/
+      - name: kubeconform
+        run: |
+          kubectl kustomize infra/k8s/overlays/staging > staging.yaml
+          # SecretProviderClass is a CRD without a bundled schema.
+          kubeconform -strict -summary -skip SecretProviderClass staging.yaml
+      - name: trivy config (high/critical fail the build)
+        run: trivy config --exit-code 1 --severity HIGH,CRITICAL infra/
+      - name: promtool (alert rules)
+        env:
+          PROM_VERSION: 3.15.0
+          PROM_SHA256: 2a542df32eac02ee17b9d844fb2aa1de00dafa5476579ba8a3ba862e9d572ea0
+        run: |
+          curl -sSfL -o prom.tgz \
+            "https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz"
+          echo "${PROM_SHA256}  prom.tgz" | sha256sum --check
+          tar -xzf prom.tgz --strip-components=1 "prometheus-${PROM_VERSION}.linux-amd64/promtool"
+          python3 -m venv /tmp/py && /tmp/py/bin/pip install -q pyyaml==6.0.3
+          /tmp/py/bin/python -c 'import sys, yaml; print(yaml.safe_dump(yaml.safe_load(open(sys.argv[1]))["spec"]))' \
+            infra/observability/alerts.yaml > infra/observability/rules.yaml
+          ./promtool check rules infra/observability/rules.yaml
+          ./promtool test rules infra/observability/alerts.test.yaml
+
+  # Default-deny network policies actually enforced (plan S10): kind's kindnet CNI.
+  network-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install kind
+        env:
+          KIND_VERSION: 0.33.0
+          KIND_SHA256: aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d
+        run: |
+          curl -sSfL -o kind "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64"
+          echo "${KIND_SHA256}  kind" | sha256sum --check
+          chmod +x kind && sudo mv kind /usr/local/bin/
+      - run: kind create cluster --image kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 --wait 120s
+      - run: ./scripts/k8s/netpol-test.sh

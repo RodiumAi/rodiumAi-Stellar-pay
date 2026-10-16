@@ -1,0 +1,20 @@
+# Only what the TypeScript build needs; secrets and local state never enter the context.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!.npmrc
+!tsconfig.base.json
+!tsconfig.json
+!apps/
+!packages/
+!scripts/backup/
+apps/*/dist
+apps/*/node_modules
+apps/*/scripts
+apps/*/test
+packages/*/dist
+packages/*/node_modules
+packages/*/test
+**/*.test.ts
+**/*.tsbuildinfo
