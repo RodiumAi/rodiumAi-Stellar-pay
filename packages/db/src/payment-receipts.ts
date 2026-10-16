@@ -59,62 +59,77 @@ export async function recordPaymentReceipt(
   receipt: ReceiptCandidate,
   newEventId: () => string,
 ): Promise<ReceiptOutcome> {
-  return db.transaction().execute(async (tx) => {
-    const memo = receipt.memo === null ? null : parseMemo(receipt.memo);
-    if (!memo?.ok) {
-      return storeUnmatched(tx, receipt, memo === null ? 'no_memo' : 'unknown_memo');
-    }
-    const payment = await lockPaymentByMemo(tx, memo.value);
-    if (payment === undefined) {
-      return storeUnmatched(tx, receipt, 'unknown_memo');
-    }
-    const transition = transitionPayment(
-      {
-        status: payment.status,
-        amountDue: payment.amount_due_stroops as Stroops,
-        amountReceived: payment.amount_received_stroops as Stroops,
-        expiresAt: instant(payment.expires_at.getTime()),
-      },
-      {
-        type: 'receipt',
-        amount: receipt.amount as Stroops,
-        ledgerClosedAt: instant(receipt.ledgerClosedAt.getTime()),
-      },
-    );
-    if (!transition.ok) {
-      // e.g. money for an already refunded payment: keep it visible for manual review.
-      return storeUnmatched(tx, receipt, 'invalid_transition');
-    }
-    const inserted = await insertReceipt(tx, {
-      ...receiptColumns(receipt),
-      match: 'matched',
-      payment_id: payment.id,
-    });
-    if (!inserted) {
-      return { kind: 'duplicate' };
-    }
-    const newStatus = transition.value.state.status;
-    const updated = await addReceivedAmount(tx, {
-      id: payment.id,
-      expectedStatus: payment.status,
-      amount: receipt.amount,
-      newStatus,
-      at: receipt.ledgerClosedAt,
-    });
-    if (updated === undefined) {
-      throw new Error('Locked payment changed status inside its own transaction');
-    }
-    const eventType = newStatus === payment.status ? null : eventForStatus(newStatus);
-    if (eventType !== null) {
-      await enqueueEvent(tx, {
-        id: newEventId(),
-        type: eventType,
-        aggregateId: updated.id,
-        payload: await paymentEventData(tx, updated),
-      });
-    }
-    return { kind: 'applied', payment: updated, excess: transition.value.excess, eventType };
+  return db.transaction().execute((tx) => applyPaymentReceipt(tx, receipt, newEventId));
+}
+
+/**
+ * Same as `recordPaymentReceipt`, inside a caller's transaction, so the ingester can
+ * commit a whole page of receipts together with its cursor (context §13.4).
+ */
+export async function applyPaymentReceipt(
+  tx: Tx,
+  receipt: ReceiptCandidate,
+  newEventId: () => string,
+): Promise<ReceiptOutcome> {
+  const memo = receipt.memo === null ? null : parseMemo(receipt.memo);
+  if (!memo?.ok) {
+    return storeUnmatched(tx, receipt, memo === null ? 'no_memo' : 'unknown_memo');
+  }
+  const payment = await lockPaymentByMemo(tx, memo.value);
+  if (payment === undefined) {
+    return storeUnmatched(tx, receipt, 'unknown_memo');
+  }
+  const transition = transitionPayment(
+    {
+      status: payment.status,
+      amountDue: payment.amount_due_stroops as Stroops,
+      amountReceived: payment.amount_received_stroops as Stroops,
+      expiresAt: instant(payment.expires_at.getTime()),
+    },
+    {
+      type: 'receipt',
+      amount: receipt.amount as Stroops,
+      ledgerClosedAt: instant(receipt.ledgerClosedAt.getTime()),
+    },
+  );
+  if (!transition.ok) {
+    // e.g. money for an already refunded payment: keep it visible for manual review.
+    return storeUnmatched(tx, receipt, 'invalid_transition');
+  }
+  const inserted = await insertReceipt(tx, {
+    ...receiptColumns(receipt),
+    match: 'matched',
+    payment_id: payment.id,
   });
+  if (!inserted) {
+    return { kind: 'duplicate' };
+  }
+  const newStatus = transition.value.state.status;
+  const updated = await addReceivedAmount(tx, {
+    id: payment.id,
+    expectedStatus: payment.status,
+    amount: receipt.amount,
+    newStatus,
+    at: receipt.ledgerClosedAt,
+  });
+  if (updated === undefined) {
+    throw new Error('Locked payment changed status inside its own transaction');
+  }
+  const eventType = newStatus === payment.status ? null : eventForStatus(newStatus);
+  if (eventType !== null) {
+    await enqueueEvent(tx, {
+      id: newEventId(),
+      type: eventType,
+      aggregateId: updated.id,
+      payload: await paymentEventData(tx, updated),
+    });
+  }
+  return { kind: 'applied', payment: updated, excess: transition.value.excess, eventType };
+}
+
+/** Stores a receipt that must never be auto-credited (context §13.2); false if already stored. */
+export async function storeUnmatchedReceipt(tx: Tx, receipt: ReceiptCandidate): Promise<boolean> {
+  return insertReceipt(tx, { ...receiptColumns(receipt), match: 'unmatched' });
 }
 
 async function storeUnmatched(
@@ -142,7 +157,17 @@ function receiptColumns(r: ReceiptCandidate) {
   };
 }
 
-async function paymentEventData(tx: Tx, payment: PaymentRow) {
+export interface PaymentEventData {
+  readonly payment_id: string;
+  readonly merchant_order_id: string;
+  readonly asset: string;
+  readonly amount_due: string;
+  readonly amount_received: string;
+  readonly tx_hashes: readonly string[];
+}
+
+/** Webhook `data` for payment events (context §10.2). */
+export async function paymentEventData(tx: Tx, payment: PaymentRow): Promise<PaymentEventData> {
   const receipts = await receiptsForPayment(tx, payment.id);
   return {
     payment_id: payment.id,
