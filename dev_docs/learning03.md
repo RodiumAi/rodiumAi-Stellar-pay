@@ -15,7 +15,7 @@ Read in order: this section → hand-off at the bottom of `learning02.md` → `d
 **How to work (user preferences):**
 
 - Solo dev, continuous session; the user said "do not wait for permission": open PR → wait for all CI checks → rebase-merge → annotated tag `v0.N.0` → start the next sprint. Never push to `main` directly.
-- Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; PR bodies end with the Claude Code line.
+- Commits and PR descriptions carry **no Claude attribution** (no `Co-Authored-By: Claude`, no "Generated with Claude Code" line) — user instruction, 2026-10-16.
 - Explain in plain language; never take secrets in chat; verify credentials with scripts that print nothing secret.
 
 **Environment (this Mac):**

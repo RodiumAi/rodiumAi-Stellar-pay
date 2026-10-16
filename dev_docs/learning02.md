@@ -120,7 +120,7 @@ Read in order: this section → hand-off summary at the bottom of `learning01.md
 - Solo dev; working continuously; sprint ends at exit tag, not a date.
 - Claude opens PRs, waits for green CI, then **rebase-merges and tags** itself (user said "you go ahead"). Branch protection is org-managed — out of scope.
 - Every sprint: tests green locally → `pnpm verify` (pre-push hook) → PR → CI green → merge → annotated tag `v0.N.0` → learning-log entries. Never commit to `main` directly.
-- Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; PR bodies end with the Claude Code line.
+- (Superseded 2026-10-16: commits and PRs carry no Claude attribution — see learning03.)
 - Explain to the user in plain language; user wanted step-by-step help with `.env`.
 
 **Environment facts (this Mac):**
