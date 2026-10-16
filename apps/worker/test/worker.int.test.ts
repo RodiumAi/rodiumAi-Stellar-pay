@@ -320,6 +320,8 @@ describe('webhook dispatch (context §10)', () => {
       randomBytes: () => Uint8Array.of(128),
       metrics,
       logger: silent,
+      // Other tests leave due events in this database; lease them all so ours is included.
+      batchSize: 10_000,
     });
     const row = () =>
       worker
