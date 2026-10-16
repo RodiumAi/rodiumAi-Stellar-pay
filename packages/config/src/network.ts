@@ -23,7 +23,10 @@ export interface NetworkConfig {
   readonly usdc: NetworkConstants['usdc'];
   readonly merchant: StellarAddress;
   readonly subscriptionContractId: string;
+  /** Cap for classic transactions (one-time payments). */
   readonly maxFeeStroops: bigint;
+  /** Cap for Soroban transactions: inclusion + resource fee (subscribe, charge, TTL). */
+  readonly maxSorobanFeeStroops: bigint;
 }
 
 // Issuers: developers.circle.com/stablecoins/usdc-contract-addresses (verified 2026-10-15).

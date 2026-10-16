@@ -25,6 +25,7 @@ describe('loadConfig', () => {
         rpcUrl: 'https://soroban-testnet.stellar.org',
         usdc: TESTNET.usdc,
         maxFeeStroops: 100_000n,
+        maxSorobanFeeStroops: 20_000_000n,
       },
       limits: {
         maxPayment: 5_000_000_000n,
