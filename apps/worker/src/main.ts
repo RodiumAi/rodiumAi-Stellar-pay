@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { loadConfig } from '@rp/config/app-config';
 import { resolveSecretFiles } from '@rp/config/secret-files';
 import { cryptoRandomBytes } from '@rp/core/random';
 import { createDb, createPool } from '@rp/db/connection';
 import { createLogger } from '@rp/security/logger';
+import { createTlsFiles } from '@rp/security/tls-files';
 import { createHorizonSource } from '@rp/stellar/horizon-source';
 import { verifyNetwork } from '@rp/stellar/network-check';
 import { createRpcSource } from '@rp/stellar/rpc-source';
@@ -19,6 +19,7 @@ import {
   createKeeperBalanceJob,
   createTtlExtensionJob,
 } from './jobs/maintenance.js';
+import { createStatsJob } from './jobs/stats.js';
 import { createMetrics } from './metrics.js';
 import { startScheduler, type Job } from './scheduler.js';
 import { createSignerClient } from './signer-client.js';
@@ -87,17 +88,19 @@ async function main(): Promise<void> {
     logger,
   });
   const subscriptionJobs: Job[] = [];
+  let certExpiry: (() => number) | null = null;
   const subs = cfg.value.subscriptions;
   if (subs !== null) {
-    const signer = createSignerClient({
-      url: subs.signerUrl,
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
-      key: readFileSync(subs.tlsKeyPath),
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
-      cert: readFileSync(subs.tlsCertPath),
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
-      ca: readFileSync(subs.tlsCaPath),
+    const tls = createTlsFiles({
+      keyPath: subs.tlsKeyPath,
+      certPath: subs.tlsCertPath,
+      caPath: subs.tlsCaPath,
+      onReload: (m) => {
+        logger.info({ not_after: m.notAfterSeconds }, 'mTLS client certificate reloaded');
+      },
     });
+    const signer = createSignerClient({ url: subs.signerUrl, tls: () => tls.current() });
+    certExpiry = () => tls.current().notAfterSeconds;
     const chain = { contractId: network.subscriptionContractId, keeper: subs.keeperAddress };
     subscriptionJobs.push(
       createContractEventsJob({
@@ -152,6 +155,7 @@ async function main(): Promise<void> {
     [
       ...subscriptionJobs,
       ingest,
+      createStatsJob({ db, metrics, certNotAfter: certExpiry }),
       createReconcileJob({ db, source, rules, logger, metrics }),
       createExpireJob({ db, now: () => new Date(), randomBytes: cryptoRandomBytes }),
       createDispatchJob({

@@ -54,6 +54,11 @@
       "types": "./dist/schema.d.ts",
       "default": "./dist/schema.js"
     },
+    "./stats": {
+      "@rp/source": "./src/stats.ts",
+      "types": "./dist/stats.d.ts",
+      "default": "./dist/stats.js"
+    },
     "./subscriptions": {
       "@rp/source": "./src/subscriptions.ts",
       "types": "./dist/subscriptions.d.ts",
