@@ -2,7 +2,7 @@
 
 Source of truth: `docs/context.md` (formerly `soroban-context.md`). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
 
-Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Phase A (S0–S5) complete; Sprint 7 in progress.**
+Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Phase A (S0–S5) complete; Sprint 8 in progress.**
 
 ---
 
@@ -459,20 +459,20 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contra
 
 ## 4. Sprint status tracker
 
-| Sprint               | Branch                      | Status       | Tag      |
-| -------------------- | --------------------------- | ------------ | -------- |
-| S0 Foundation        | `sprint/00-foundation`      | done (PR #1) | `v0.0.1` |
-| S1 Core              | `sprint/01-core-domain`     | done (PR #3) | `v0.1.0` |
-| S2 Config + security | `sprint/02-config-security` | done (PR #4) | `v0.2.0` |
-| S3 DB                | `sprint/03-db`              | done (PR #5) | `v0.3.0` |
-| S4 Contract          | `sprint/04-contract`        | done (PR #6) | `v0.4.0` |
-| S5 Stellar           | `sprint/05-stellar`         | done (PR #8) | `v0.5.0` |
-| S6 API               | `sprint/06-api`             | done (PR #9) | `v0.6.0` |
-| S7 Worker            | `sprint/07-worker-payments` | in progress  | —        |
-| S8 Checkout          | `sprint/08-checkout`        | not started  | —        |
-| S9 Subscriptions     | `sprint/09-subscriptions`   | not started  | —        |
-| S10 Hardening        | `sprint/10-hardening`       | not started  | —        |
-| S11 Release          | `sprint/11-release`         | not started  | —        |
+| Sprint               | Branch                      | Status        | Tag      |
+| -------------------- | --------------------------- | ------------- | -------- |
+| S0 Foundation        | `sprint/00-foundation`      | done (PR #1)  | `v0.0.1` |
+| S1 Core              | `sprint/01-core-domain`     | done (PR #3)  | `v0.1.0` |
+| S2 Config + security | `sprint/02-config-security` | done (PR #4)  | `v0.2.0` |
+| S3 DB                | `sprint/03-db`              | done (PR #5)  | `v0.3.0` |
+| S4 Contract          | `sprint/04-contract`        | done (PR #6)  | `v0.4.0` |
+| S5 Stellar           | `sprint/05-stellar`         | done (PR #8)  | `v0.5.0` |
+| S6 API               | `sprint/06-api`             | done (PR #9)  | `v0.6.0` |
+| S7 Worker            | `sprint/07-worker-payments` | done (PR #10) | `v0.7.0` |
+| S8 Checkout          | `sprint/08-checkout`        | in progress   | —        |
+| S9 Subscriptions     | `sprint/09-subscriptions`   | not started   | —        |
+| S10 Hardening        | `sprint/10-hardening`       | not started   | —        |
+| S11 Release          | `sprint/11-release`         | not started   | —        |
 
 ---
 

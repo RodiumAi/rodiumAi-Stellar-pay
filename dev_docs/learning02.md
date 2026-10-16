@@ -228,3 +228,40 @@ Flaky dispatch test: cross-file parallelism on a shared test DB
 - Why: vitest runs integration files in parallel against one database; the DB repository test briefly `FOR UPDATE`-locks all due outbox rows, and the dispatcher's `SKIP LOCKED` lease correctly skipped them. (Also: >20 due events from other tests exceeded the default batch.)
 - Fix: `fileParallelism: false` for the `int` project (~10 s total) and a large batch in that test. 3/3 green reruns.
 - Prevent: integration files that share a database never run in parallel.
+
+### 2026-10-16 · S7 · release · milestone
+
+`v0.7.0` merged and tagged (PR #10, 8/8 green; contract job 30 → 13 min with the Scout cache).
+
+### 2026-10-16 · S8 · checkout · decision
+
+Freighter + SEP-7 instead of Stellar Wallets Kit
+
+- What: kit 2.7.0 = ~234 packages / 481 MB (WalletConnect/Reown, Ledger, Trezor _beta_, twind runtime CSS). `@stellar/freighter-api` 6.0.1 = 2 deps / ~98 KB.
+- Why: §16.2 minimal deps; §11.3 CSP (`style-src 'self'`) would need a relaxation for twind; WalletConnect is out of scope at launch. Mobile wallets use the SEP-7 QR/link (ingester matches by memo).
+- Result: initial JS 1.48 KB gz (budget 30 KB, checked in CI), wallet chunk 3.2 KB; no CSP exceptions (`docs/security/csp.md`). Context §3, §11.1, §17 updated.
+
+### 2026-10-16 · S8 · worker · bug
+
+First run with no cursor re-asked Horizon for "now" every pass → payments between passes skipped
+
+- Why: an empty page never saved a cursor, so `cursor=now` was reused forever until the first payment.
+- Fix: pin the starting ledger on the first pass (`ledger:N` cursor) and persist any cursor progress, including empty pages that advance the provider cursor (RPC). Regression test added. Found while planning the testnet E2E.
+
+### 2026-10-16 · S8 · db · bug
+
+App vs database clock skew delayed new webhooks
+
+- What: dispatch tests failed after the Colima VM clock drifted +2–3 s: new events were "not due yet".
+- Why: `outbox_events.next_attempt_at` defaulted to the DB `now()`, while leasing/retries compare with the app clock.
+- Fix: `enqueueEvent` sets `next_attempt_at` from the app clock; all scheduling uses one clock.
+
+### 2026-10-16 · S8 · e2e · milestone
+
+Testnet E2E green with real Circle testnet USDC (`pnpm e2e:testnet`)
+
+- A: checkout page (CSP) → prepare → Freighter-style sign → submit (guard) → confirmed webhook (valid signature).
+- B: direct wallet payment 1 USDC → `underpaid` → top-up 2 → `confirmed` with 2 tx hashes.
+- C: unpaid 60 s quote → `expired`.
+- Payer buys USDC on the testnet DEX (`pathPaymentStrictReceive`, ~1.1 XLM/USDC); merchant `rp_testnet_merchant` has a USDC trustline now.
+- Also: Fastify 5.12 deprecates top-level `requestIdLogLabel`/`disableRequestLogging` → `logController: new LogController({...})`.
