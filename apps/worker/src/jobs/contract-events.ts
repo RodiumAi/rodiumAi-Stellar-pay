@@ -4,7 +4,13 @@ import { uuidV7 } from '@rp/core/uuid-v7';
 import type { Db, Tx } from '@rp/db/connection';
 import { getCursor, saveCursor } from '@rp/db/cursors';
 import { enqueueEvent } from '@rp/db/outbox';
-import { findSubscriptionByContractId, transitionSubscription } from '@rp/db/subscriptions';
+import {
+  activateSubscription,
+  findSubscriptionByActivationTx,
+  findSubscriptionByContractId,
+  transitionSubscription,
+} from '@rp/db/subscriptions';
+import type { SubscriptionRow } from '@rp/db/schema';
 import { parseSubscriptionEvent, type ParsedEvent } from '@rp/stellar/contract-events';
 import type { rpc } from '@stellar/stellar-sdk';
 import type { Metrics } from '../metrics.js';
@@ -18,9 +24,56 @@ export interface ContractEventsClient {
 const newId = (): string => uuidV7(instant(Date.now()), cryptoRandomBytes);
 const toDate = (unixSeconds: bigint): Date => new Date(Number(unixSeconds) * 1000);
 
+/**
+ * Checkout submit timed out before the subscribe transaction landed: the API recorded the
+ * transaction hash; activate from the `sub_created` event of that transaction. The signed
+ * subscriber and the plan must match what checkout recorded.
+ */
+async function activateFromEvent(
+  tx: Tx,
+  e: ParsedEvent,
+  logger: JobLogger,
+): Promise<SubscriptionRow | undefined> {
+  if (e.event.type !== 'sub_created') return undefined;
+  const pending = await findSubscriptionByActivationTx(tx, Buffer.from(e.txHash, 'hex'));
+  if (pending?.status !== 'incomplete') return undefined;
+  if (
+    pending.subscriber_address !== e.event.subscriber ||
+    pending.contract_plan_id !== e.event.planId
+  ) {
+    logger.warn(
+      { alert: 'activation_mismatch', subscription_id: pending.id },
+      'sub_created does not match the recorded checkout submission',
+    );
+    return undefined;
+  }
+  const activated = await activateSubscription(tx, pending.id, {
+    subscriberAddress: e.event.subscriber,
+    contractSubscriptionId: e.event.subId,
+    allowanceExpiresLedger: pending.allowance_expires_ledger ?? 0,
+  });
+  if (activated === undefined) return undefined;
+  await enqueueEvent(tx, {
+    id: newId(),
+    type: 'subscription.activated',
+    aggregateId: activated.id,
+    payload: {
+      subscription_id: activated.id,
+      merchant_subscription_ref: activated.merchant_subscription_ref,
+      plan_code: activated.plan_code,
+      contract_subscription_id: e.event.subId.toString(),
+      tx_hash: e.txHash,
+    },
+  });
+  logger.info({ subscription_id: activated.id }, 'subscription activated from contract event');
+  return activated;
+}
+
 /** Keeps subscription state in sync with the chain, incl. cancellations from wallets (§13.4). */
 async function apply(tx: Tx, e: ParsedEvent, logger: JobLogger): Promise<void> {
-  const sub = await findSubscriptionByContractId(tx, e.event.subId);
+  const sub =
+    (await findSubscriptionByContractId(tx, e.event.subId)) ??
+    (await activateFromEvent(tx, e, logger));
   if (sub === undefined) {
     logger.warn(
       {

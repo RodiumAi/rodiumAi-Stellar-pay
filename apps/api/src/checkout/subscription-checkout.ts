@@ -4,7 +4,7 @@ import { instant } from '@rp/core/time';
 import { uuidV7 } from '@rp/core/uuid-v7';
 import { enqueueEvent } from '@rp/db/outbox';
 import type { SubscriptionRow } from '@rp/db/schema';
-import { activateSubscription } from '@rp/db/subscriptions';
+import { activateSubscription, recordSubscribeSubmission } from '@rp/db/subscriptions';
 import { submitAndWait, type SorobanClient } from '@rp/stellar/soroban';
 import { buildSubscribeTransaction, type SubscribeClient } from '@rp/stellar/subscribe-tx';
 import { guardSubscribeTransaction } from '@rp/stellar/xdr-guards';
@@ -187,6 +187,15 @@ export async function submitSubscription(
   }
   if (!first) throw new ApiError('already_submitted', 'This transaction was already submitted');
 
+  const liveUntil = liveUntilOf(guard.value.transaction);
+  // Before sending: if our wait below times out, the worker activates the subscription from
+  // the contract's `sub_created` event, matched by this transaction hash.
+  await recordSubscribeSubmission(deps.db, sub.id, {
+    txHash: Buffer.from(guard.value.hash, 'hex'),
+    subscriberAddress: subscriber,
+    allowanceExpiresLedger: liveUntil ?? 0,
+  });
+
   const outcome = await submitAndWait(client, xdr, network.passphrase);
   if (outcome.status === 'failed') {
     req.log.warn(
@@ -198,7 +207,6 @@ export async function submitSubscription(
   if (outcome.status === 'pending' || typeof outcome.returnValue !== 'bigint') {
     return reply.send({ hash: outcome.hash, status: 'submitted' });
   }
-  const liveUntil = liveUntilOf(guard.value.transaction);
   const contractId = outcome.returnValue;
   await deps.db.transaction().execute(async (tx) => {
     const activated = await activateSubscription(tx, sub.id, {

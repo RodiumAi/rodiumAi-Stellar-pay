@@ -27,6 +27,7 @@ describe('migrations', () => {
       '0002_grants.sql',
       '0003_cancel_incomplete_subscriptions.sql',
       '0004_api_records_allowance.sql',
+      '0005_subscription_activation_tx.sql',
     ]);
   });
 
