@@ -23,9 +23,16 @@ case "$NETWORK" in
   *) : "${TOKEN:?TOKEN is required for $NETWORK}" ;;
 esac
 
-cd "$(git rev-parse --show-toplevel)/contracts"
-stellar contract build >&2
-WASM=target/wasm32v1-none/release/subscription.wasm
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/contracts"
+# WASM=target/e2e/subscription-test-short-intervals.wasm deploys the E2E-only build.
+if [[ -z "${WASM:-}" ]]; then
+  stellar contract build >&2
+  WASM=target/wasm32v1-none/release/subscription.wasm
+fi
+if [[ "$NETWORK" == "mainnet" && "$WASM" == *test-short-intervals* ]]; then
+  echo "refusing to deploy the test-short-intervals build to mainnet" >&2
+  exit 1
+fi
 echo "wasm sha256: $(shasum -a 256 "$WASM" | cut -d' ' -f1)" >&2
 
 CONTRACT_ID="$(stellar contract deploy --wasm "$WASM" --source "$SOURCE" --network "$NETWORK" -- \

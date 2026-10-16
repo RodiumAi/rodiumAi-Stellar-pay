@@ -16,7 +16,11 @@ use crate::events::{Canceled, Charged, KeeperSet, PausedSet, PlanSet, SubCreated
 pub use crate::types::{ChargeOutcome, Error, Plan, SubStatus, Subscription};
 
 /// Minimum billing interval; matches `subscriptions.interval_seconds >= 86400` (context §7.1).
+#[cfg(not(feature = "test-short-intervals"))]
 pub const MIN_INTERVAL_SECS: u64 = 86_400;
+/// E2E-only build: lets a test plan renew within minutes on a real network.
+#[cfg(feature = "test-short-intervals")]
+pub const MIN_INTERVAL_SECS: u64 = 60;
 
 #[contract]
 pub struct SubscriptionContract;
