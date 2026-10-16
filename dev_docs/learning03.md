@@ -10,7 +10,7 @@ Cap: 200 lines. When full, write a hand-off summary and continue in `learning04.
 
 Read in order: this section → hand-off at the bottom of `learning02.md` → `dev_docs/BUILD_PLAN.md` (current sprint) → the `docs/context.md` sections it cites. Or run `/resume`.
 
-**State (2026-10-16):** S0–S10 merged and tagged `v0.0.1`…`v0.10.0`. **Sprint 11 (main-app integration + release candidate)** next on `sprint/11-release`. S10 left two items that need outside access: the restore drill into a scratch **Supabase** project (local drill passes: `scripts/backup/drill-local.sh`) and staging on **AWS** with alerts firing (teammate's platform; manifests in `infra/k8s`, alerts in `infra/observability`).
+**State (2026-10-16):** S0–S10 merged and tagged `v0.0.1`…`v0.10.0`. **Sprint 11** in-repo parts merged without a tag (release E2E `pnpm e2e:release` 7/7, `pnpm load:sanity`, §17 mainnet USDC verified). **Paused before the main-app integration — the user said "not yet" (2026-10-16); do not clone or change the main app until they say so.** Candidates found by code search for MoMo: `RodiumAi/rodiumai_backend_nestjs` (adapter/webhooks) and `RodiumAi/rodiumai_user_nextjs` (UI). External items left: Supabase scratch-project restore drill (needs Supabase access), staging on AWS + alerts firing (teammate), legal sign-off, Upstash plan/pricing, admin/merchant multisig. `v1.0.0-rc.1` waits for staging + the adapter.
 
 **How to work (user preferences):**
 
@@ -28,7 +28,7 @@ Read in order: this section → hand-off at the bottom of `learning02.md` → `d
 
 **`.env`:** complete for local dev + testnet (Upstash, ExchangeRate-API, keys, testnet merchant `rp_testnet_merchant` with USDC trustline). Also holds the S9 subscription settings (`SUBSCRIPTION_CONTRACT_ID` = E2E contract `CCREU5CN…GSFK`, `SUBSCRIPTION_PLANS`, signer/worker mTLS paths in `.mtls/` from `scripts/dev-mtls.sh`, `KEEPER_ADDRESS`, `KEEPER_SECRET`). Missing: Supabase cloud URLs (S10).
 
-**Sprint 11 starting notes:** needs the main RodiumAI app repo (adapter next to MoMo, webhook verifier with dedup on `id`, grant access only on confirmed/activated/renewed, fallback polling, flag default off) — ask the user where it is. In this repo: §19 full testnet E2E release script (combine `pnpm e2e:testnet` + `pnpm e2e:testnet:subscriptions`, add underpayment + expiry), load sanity test, `v1.0.0-rc.1`. Re-check soroban-sdk 29 after 2026-10-21 (contract review). Images: `docker build -f infra/docker/Dockerfile --target <app>` (~25 min locally; CI is the gate), `scripts/check-image.sh`.
+**When resuming Sprint 11:** ask the user before touching the main app. Re-check soroban-sdk 29 after 2026-10-21 (contract review, plan §6) — any contract change needs a new WASM hash, Scout, 1 h fuzz and the model proptest. Images: `docker build -f infra/docker/Dockerfile --target <app>` (~25 min locally; CI is the gate), `scripts/check-image.sh`; published + signed by `images.yml` on main (first run green 2026-10-16).
 
 ---
 
@@ -151,3 +151,11 @@ Traces by hand, no auto-instrumentation; signer exports nothing
 
 - ESM auto-instrumentation needs loader hooks (import-in-the-middle) that fight `node --permission`; spans are created at boundaries instead (API request with route template names, each worker job pass, worker → signer client span with `traceparent`). The signer has no egress, so it logs the `trace_id` from `traceparent`.
 - mTLS files are re-read every 60 s (`createTlsFiles`); the signer swaps its secure context (`minVersion` must be passed again — `setSecureContext` replaces the whole context). Tests need `agent: false`: keep-alive sockets skip the new handshake.
+
+### 2026-10-16 · S11 · release · milestone
+
+Release gate and load sanity in place; integration paused
+
+- `pnpm e2e:release`: payment + underpayment/top-up + expiry, then subscription create/charge/failed charge/wallet cancel — 7/7 on testnet in 8 min.
+- `pnpm load:sanity`: 100 creations + 100 status polls correct; p95 ≈ 850 ms locally, of which Upstash REST round trips are most (ping p95 ≈ 560 ms from here; each call makes 2). Budget = 300 ms own time + measured Upstash, so the check means the same in-region. The rate limit answers 429, never 5xx.
+- First `images.yml` run on main: 4 images pushed to GHCR, cosign-signed, SBOM + SLSA provenance (verified via the attestations API).
