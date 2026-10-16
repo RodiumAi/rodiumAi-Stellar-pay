@@ -36,6 +36,6 @@ environment (`rodium-pay-staging`, `rodium-pay-production`).
 ## What lives in Redis (for reviewers)
 
 Only short-lived keys, all with TTLs (§8.2): `rp:rl:api:{keyId}` and `rp:rl:ip:{ip}` (60 s),
-`rp:nonce:{keyId}:{nonce}` (600 s, fail closed) and
+`rp:nonce:{keyId}:{nonce}` (600 s, fail closed), `rp:status:{paymentId}` (5 s) and
 `rp:fx:usd` (until the provider's next update). Postgres stays authoritative; losing the
 whole database costs a few seconds of rate-limit history and cache warmth.
