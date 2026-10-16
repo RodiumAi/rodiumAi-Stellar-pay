@@ -34,8 +34,14 @@ weekly `age`-encrypted `pg_dump` of the `pay` schema, for when the Supabase acco
 
 ## Steps — B. Encrypted logical export
 
-There is no export or restore script in the repo yet; these are the manual commands, and the drill
-must prove them.
+The weekly export is made by the `rp-backup` CronJob (`scripts/backup/export.sh`, image
+`infra/docker/Dockerfile.backup`): `pg_dump --schema=pay --format=custom --no-owner --no-privileges`
+streamed through `age`, so the plaintext never touches disk. `scripts/backup/restore.sh` does the
+reverse (`age -d | pg_restore`). Because the dump carries no owners or grants, re-run
+`packages/db/migrations/0002_grants.sql` and `0004` grants as `rp_owner` after restoring, and
+`ALTER SCHEMA pay OWNER TO rp_owner` (plus its objects) if the restore ran as `postgres`.
+`scripts/backup/drill-local.sh` runs the whole loop against the local dev database. The steps
+below are the manual equivalent for a real recovery.
 
 1. Create a new Postgres 17 database (new Supabase project in another account, or any managed PG 17).
 2. Bootstrap roles as `postgres` with fresh 32+ character passwords (`infra/supabase/bootstrap-roles.sql`;
@@ -89,4 +95,17 @@ Duration:        <start → service-ready, minutes>
 Checks done:     row counts vs source, max(created_at), ingest_cursors, schema_migrations,
                  worker started against target and ingested, sample payment decrypts via API
 Result:          pass | fail — <notes, follow-up issues>
+```
+
+```text
+Date:            2026-10-16
+Who:             local drill (Sprint 10) — not yet a Supabase scratch-project drill
+Path:            B (age export) via scripts/backup/drill-local.sh
+Source:          local dev database rodium_pay_dev (Postgres 17.6)
+Target project:  scratch database rodium_pay_drill on the same local server
+Duration:        5 s export + restore (33,954 bytes encrypted)
+Checks done:     export is not plaintext; row counts per table identical (8 tables incl.
+                 schema_migrations)
+Result:          pass — first real drill into a scratch Supabase project still to do
+                 (needs Supabase access)
 ```
