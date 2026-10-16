@@ -52,9 +52,9 @@ Every invariant in context §14.3 has a dedicated test; auth tests use `mock_aut
 
 Random subscribe/advance/charge/cancel/pause/reprice sequences; asserts locked price, schedule bounds, exact merchant total, and never charging beyond the allowance. CI runs 120 s per push (first green run: PR #6, 2026-10-15). A 1 h run executes nightly (`.github/workflows/fuzz-nightly.yml`, also manual dispatch); record the run for the deployed hash here.
 
-| Date | Duration | Result                 |
-| ---- | -------- | ---------------------- |
-| —    | —        | pending first long run |
+| Date       | Duration      | Result                                                                          |
+| ---------- | ------------- | ------------------------------------------------------------------------------- |
+| 2026-10-16 | 1 h (3,601 s) | clean: 155,904 runs, cov 9,298, corpus 1,143; hash `81ea85d4…`; run 38863211969 |
 
 ### Komet (Runtime Verification) — blocked (checked S10, 2026-10-16)
 
@@ -70,6 +70,26 @@ real contract with real auth and a real SAC, every §14.3 invariant asserted aft
 Verified to catch a removed pause guard. Property testing, not proof.
 
 ### Certora Sunbeam (optional) — S10
+
+## Review pass 2 (S10, 2026-10-16)
+
+Re-run of every tool on the current contract. The production WASM is **byte-identical to S4**:
+sha256 `81ea85d4…ca1b`, 11,604 bytes, rebuilt in CI (`contract` job) and locally; the S9 change
+only adds the `test-short-intervals` feature, which does not alter the default build.
+
+| Check                                     | Result                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Scout 0.3.17                              | critical 0 · medium 0 · minor 0 · enhancement 7 (same accepted findings as above)           |
+| `cargo test` (23)                         | pass, incl. new model-based `random_operations_keep_every_invariant` (128 × ≤ 40 ops)       |
+| Mutation check of the model test          | removing the pause guard in `charge` → test fails with a shrunk counterexample              |
+| cargo-fuzz `charge_sequence`, 120 s on PR | pass (PR #13)                                                                               |
+| cargo-fuzz 1 h (`fuzz-nightly`)           | clean: 155,904 runs in 3,601 s, no crash (run 38863211969)                                  |
+| Komet                                     | blocked (no protocol-28 host functions; `require_auth` placeholder) — see above             |
+| `cargo audit` / `cargo deny`              | pass (CI `contract` job)                                                                    |
+| soroban-sdk 29                            | 29.0.0 published 2026-10-07: eligible under the 14-day rule from 2026-10-21; re-review then |
+
+The nightly schedule had never fired (no runs listed); the 1 h run above was dispatched by hand.
+Check the schedule after merge (GitHub only runs schedules from the default branch).
 
 ## Manual checklist
 
