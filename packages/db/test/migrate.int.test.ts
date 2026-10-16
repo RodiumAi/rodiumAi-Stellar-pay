@@ -22,7 +22,11 @@ describe('migrations', () => {
   it('re-running is a no-op', async () => {
     const result = await withOwner((c) => migrate(c, migrationsDir));
     expect(result.applied).toEqual([]);
-    expect(result.skipped).toEqual(['0001_schema.sql', '0002_grants.sql']);
+    expect(result.skipped).toEqual([
+      '0001_schema.sql',
+      '0002_grants.sql',
+      '0003_cancel_incomplete_subscriptions.sql',
+    ]);
   });
 
   it('refuses to run when an applied migration was edited', async () => {
