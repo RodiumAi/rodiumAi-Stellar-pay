@@ -603,3 +603,98 @@ proptest! {
         prop_assert_eq!(s.balance(&s.merchant), PRICE * (1 + charges));
     }
 }
+
+// ── Model-based property test: every §14.3 invariant after every step ────────
+// Komet cannot run soroban-sdk 28 contracts yet (no protocol-28 host functions, see
+// contracts/komet/README.md), so this test drives the real contract — real auth checks and a
+// real Stellar Asset Contract — through random operation sequences against a small model.
+
+#[derive(Debug, Clone)]
+enum Op {
+    Advance(u64),
+    KeeperCharge,
+    StrangerCharge(u8),
+    SubscriberCancel,
+    Pause(bool),
+    RepricePlan(i128),
+}
+
+fn ops() -> impl Strategy<Value = std::vec::Vec<Op>> {
+    prop::collection::vec(
+        prop_oneof![
+            3 => (0..2 * INTERVAL).prop_map(Op::Advance),
+            4 => Just(Op::KeeperCharge),
+            1 => (0u8..4).prop_map(Op::StrangerCharge),
+            1 => Just(Op::SubscriberCancel),
+            1 => any::<bool>().prop_map(Op::Pause),
+            1 => (1..10 * PRICE).prop_map(Op::RepricePlan),
+        ],
+        1..40,
+    )
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(128))]
+
+    #[test]
+    fn random_operations_keep_every_invariant(seq in ops()) {
+        let s = Setup::new();
+        let id = s.subscribe(64).unwrap();
+        let supply = s.balance(&s.subscriber) + s.balance(&s.merchant);
+        let (mut now, mut paused, mut canceled, mut charges) = (START, false, false, 0i128);
+        for op in seq {
+            let before = s.client.get(&id);
+            match op {
+                Op::Advance(dt) => { now += dt; s.at(now); }
+                Op::KeeperCharge => match s.charge(id) {
+                    Ok(out) => {
+                        // Only when active, unpaused and due; schedule moves forward, never back-charges.
+                        prop_assert!(!paused && !canceled && now >= before.next_charge_at);
+                        prop_assert_eq!(out.amount, PRICE);
+                        prop_assert!(out.next_charge_at > now && out.next_charge_at <= now + INTERVAL);
+                        charges += 1;
+                    }
+                    Err(Error::Paused) => prop_assert!(paused),
+                    Err(Error::NotActive) => prop_assert!(canceled && !paused),
+                    Err(Error::NotDue) => prop_assert!(!paused && !canceled && now < before.next_charge_at),
+                    Err(e) => prop_assert!(false, "unexpected charge error {:?}", e),
+                },
+                Op::StrangerCharge(who) => {
+                    let caller = match who {
+                        0 => s.admin.clone(),
+                        1 => s.subscriber.clone(),
+                        2 => s.merchant.clone(),
+                        _ => Address::generate(&s.env),
+                    };
+                    let r = s.client
+                        .mock_auths(&[MockAuth {
+                            address: &caller,
+                            invoke: &invoke(&s.contract, "charge", (id,).into_val(&s.env)),
+                        }])
+                        .try_charge(&id);
+                    prop_assert!(r.is_err(), "only the keeper may charge");
+                }
+                Op::SubscriberCancel => {
+                    let r = s.cancel_as(&s.subscriber.clone(), id);
+                    if canceled { prop_assert_eq!(r, Err(Error::NotActive)); } else { prop_assert_eq!(r, Ok(())); }
+                    canceled = true;
+                }
+                Op::Pause(p) => { s.set_paused(p); paused = p; }
+                Op::RepricePlan(price) => {
+                    s.set_plan_as(&s.admin.clone(), PLAN, price, INTERVAL, true).unwrap();
+                }
+            }
+            // Recipient fixed and price locked: the merchant got exactly PRICE per charge.
+            prop_assert_eq!(s.balance(&s.merchant), PRICE * (1 + charges));
+            // Funds only move subscriber → merchant; the contract never holds any.
+            prop_assert_eq!(s.balance(&s.subscriber) + s.balance(&s.merchant), supply);
+            prop_assert_eq!(s.balance(&s.contract), 0);
+            let after = s.client.get(&id);
+            prop_assert!(after.next_charge_at >= before.next_charge_at, "schedule never moves back");
+            prop_assert_eq!(after.price, PRICE);
+            prop_assert_eq!(after.status == SubStatus::Canceled, canceled);
+        }
+        // Paused contract refuses new subscriptions.
+        if paused { prop_assert_eq!(s.subscribe(1), Err(Error::Paused)); }
+    }
+}
