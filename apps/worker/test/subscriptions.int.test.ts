@@ -206,6 +206,9 @@ const events = (aggregateId: string) =>
 describe('charging (context §15)', () => {
   it('charges a due subscription and records the outcome', async () => {
     const now = new Date();
+    // Other test files can leave due subscriptions in the shared DB; charge them first so
+    // the counts below are this subscription's alone.
+    await chargeJob(fakeChain(), () => now).job.run(never);
     const sub = await activeSubscription(new Date(now.getTime() - 1000));
     const chain = fakeChain();
     chain.nextChargeAt = BigInt(Math.floor(now.getTime() / 1000) + 30 * 86_400);
