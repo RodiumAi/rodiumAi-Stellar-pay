@@ -159,3 +159,11 @@ Release gate and load sanity in place; integration paused
 - `pnpm e2e:release`: payment + underpayment/top-up + expiry, then subscription create/charge/failed charge/wallet cancel — 7/7 on testnet in 8 min.
 - `pnpm load:sanity`: 100 creations + 100 status polls correct; p95 ≈ 850 ms locally, of which Upstash REST round trips are most (ping p95 ≈ 560 ms from here; each call makes 2). Budget = 300 ms own time + measured Upstash, so the check means the same in-region. The rate limit answers 429, never 5xx.
 - First `images.yml` run on main: 4 images pushed to GHCR, cosign-signed, SBOM + SLSA provenance (verified via the attestations API).
+
+### 2026-10-16 · S11 · subscriptions · bug
+
+A slow subscribe confirmation left a paid subscription `incomplete` forever
+
+- What: found while writing the integration guide: if checkout's wait for the subscribe transaction timed out, the API answered `submitted` and relied on the worker — but contract-event sync finds rows by `contract_subscription_id`, which only activation sets. User paid and approved; no `subscription.activated`, no charges.
+- Fix: migration 0005 `activation_tx_hash`; checkout records hash + subscriber + allowance before sending; the worker matches `sub_created` by transaction hash (subscriber and plan must match) and activates + emits `subscription.activated`. Regression test (incl. a mismatched wallet); subscription testnet E2E 4/4.
+- Prevent: every "the worker will pick it up" comment needs a test that the worker can actually find the row.
