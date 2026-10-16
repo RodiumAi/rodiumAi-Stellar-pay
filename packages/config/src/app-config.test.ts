@@ -45,6 +45,18 @@ describe('loadConfig', () => {
     expect(result.ok && result.value.network.horizonUrl).toBe('https://horizon.stellar.org');
   });
 
+  it('treats empty values as unset (defaults apply)', () => {
+    const result = loadConfig({
+      ...valid,
+      RP_STELLAR_RPC_URL: '',
+      RP_STELLAR_HORIZON_URL: '  ',
+      LOG_LEVEL: '',
+    });
+    expect(result.ok && result.value.network.rpcUrl).toBe('https://soroban-testnet.stellar.org');
+    expect(result.ok && result.value.logLevel).toBe('info');
+    expect(loadConfig({ ...valid, RP_STELLAR_NETWORK: '' }).ok).toBe(false);
+  });
+
   it('parses the fiat list', () => {
     const result = loadConfig({ ...valid, FX_SUPPORTED_FIAT: 'USD, GHS' });
     expect(result.ok && result.value.fx.supportedFiat).toEqual(['USD', 'GHS']);
