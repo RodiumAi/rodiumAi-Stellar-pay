@@ -913,7 +913,7 @@ No document or codebase can guarantee freedom from CVEs or zero-days; new vulner
 
 Things that change over time. Verify each against official sources when implementing and record the source in the PR:
 
-- Circle's USDC issuer and SAC contract ID for testnet and mainnet.
+- Circle's USDC issuer and SAC contract ID for testnet and mainnet — S11 (2026-10-16): mainnet issuer `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN` is listed in `circle.com/.well-known/stellar.toml` and the account's `home_domain` is `circle.com`; its SAC id `CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75` re-derived with `stellar contract id asset`; both match `packages/config/src/network.ts`.
 - Current SDF guidance on Horizon versus RPC for payment ingestion, and the chosen provider's retention window.
 - The network's current maximum entry TTL and fee settings.
 - Which wallets support signing (and Soroban invocations) — S8: Freighter (extension; `signTransaction`, Soroban-capable) at launch; SEP-7 for mobile wallets. Re-check before adding more.
@@ -922,7 +922,7 @@ Things that change over time. Verify each against official sources when implemen
 - Supavisor's current ports, username format and prepared-statement support in transaction mode.
 - Upstash's current eviction, ACL and pricing options for the chosen plan.
 - ExchangeRate-API plan limits (requests, update frequency), response fields and supported currencies.
-- Current versions and Soroban SDK compatibility of Scout, Komet and (if used) Certora Sunbeam.
+- Current versions and Soroban SDK compatibility of Scout, Komet and (if used) Certora Sunbeam — S10: Komet v0.1.89 does not support soroban-sdk 28 (`contracts/komet/README.md`); Scout 0.3.17 works.
 - Legal and regulatory requirements for accepting digital-asset payments in each jurisdiction where RodiumAI operates.
 
 ---
