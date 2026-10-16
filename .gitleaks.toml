@@ -1,0 +1,16 @@
+# Default gitleaks rules plus an allow-list for reviewed test fixtures. Values, not
+# commit fingerprints: rebase-merges rewrite commit hashes, which broke .gitleaksignore.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Reviewed fake values in tests and local-only fixtures"
+regexTarget = "match"
+regexes = [
+  # throwaway token of the local Redis + serverless-redis-http containers
+  '''rp-local-token''',
+  # fake ExchangeRate-API key in apps/api unit tests
+  '''abcdef123456''',
+  # made-up customer reference used across API tests
+  '''usr_19ab-secret-ref''',
+]
