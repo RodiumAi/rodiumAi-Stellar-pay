@@ -9,6 +9,11 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 doctest = false
 
+[features]
+# Testnet/Quickstart E2E only: lets plans charge every 60 s instead of every day.
+# Never deployed to mainnet (scripts/contract/deploy.sh refuses).
+test-short-intervals = []
+
 [dependencies]
 soroban-sdk = "=28.0.0"
 

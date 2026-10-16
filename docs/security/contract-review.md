@@ -15,6 +15,10 @@ section below to be complete **for the exact WASM hash being deployed**.
 
 The hash changes with any code or toolchain change; record the final one at sign-off. CI prints it in the `contract` job.
 
+### E2E-only build (never mainnet)
+
+`cargo build --features test-short-intervals` lowers `MIN_INTERVAL_SECS` to 60 s so renewals can be exercised on a live network. It is a separate artifact (`target/e2e/subscription-test-short-intervals.wasm`, sha256 `1141eaa3…`), the production hash above is unchanged, and `scripts/contract/deploy.sh` refuses it on mainnet. Sign-off always applies to the production hash.
+
 ## Tool results
 
 ### Scout 0.3.17 (CoinFabrik) — 2026-10-15
