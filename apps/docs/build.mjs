@@ -52,15 +52,13 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
+// Allowlist only: every run of characters other than a–z/0–9 becomes one hyphen, so no
+// markup or entity can survive into an id (no tag-stripping regex needed).
 const slugify = (s) =>
-  s
+  String(s)
     .toLowerCase()
-    .replace(/<[^>]+>/g, '')
-    .replace(/&[a-z]+;/g, '')
-    .replace(/[`'"()/{}.,:§—–]+/g, ' ')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 64);
 const stripNumber = (t) => t.replace(/^\d+(\.\d+)*\.?\s+/, '');
 
@@ -253,7 +251,9 @@ function renderMarkdown(md, toc) {
       },
       link({ href, title, tokens }) {
         const url = rewriteHref(href);
-        const ext = /^https?:/.test(url) && !url.startsWith(BASE_URL);
+        // Exact host comparison: a prefix check would accept stelpay.forge.rodiumai.io.evil.com.
+        let ext = false;
+        if (/^https?:/.test(url)) ext = new URL(url).host !== new URL(BASE_URL).host;
         return `<a href="${esc(url)}"${title ? ` title="${esc(title)}"` : ''}${ext ? ' rel="noopener" target="_blank"' : ''}>${this.parser.parseInline(tokens)}</a>`;
       },
     },
