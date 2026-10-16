@@ -55,6 +55,11 @@ const EnvSchema = z
       .string()
       .regex(/^[1-9][0-9]{0,9}$/)
       .transform(BigInt),
+    MAX_SOROBAN_FEE_STROOPS: z
+      .string()
+      .regex(/^[1-9][0-9]{0,10}$/)
+      .default('20000000')
+      .transform(BigInt),
     MAX_PAYMENT_USDC: usdcAmount,
     MAX_SUBSCRIPTION_PRICE_USDC: usdcAmount,
     SUBSCRIPTION_APPROVE_PERIODS: z.coerce.number().int().min(1).max(12).default(3),
@@ -115,6 +120,7 @@ export function loadConfig(
       merchant: e.MERCHANT_ADDRESS as NetworkConfig['merchant'],
       subscriptionContractId: e.SUBSCRIPTION_CONTRACT_ID,
       maxFeeStroops: e.MAX_FEE_STROOPS,
+      maxSorobanFeeStroops: e.MAX_SOROBAN_FEE_STROOPS,
     },
     limits: {
       maxPayment: e.MAX_PAYMENT_USDC,
