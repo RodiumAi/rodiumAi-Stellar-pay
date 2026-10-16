@@ -12,6 +12,16 @@ export interface WorkerConfig {
   readonly webhookPrivateKey: KeyObject;
   readonly ingestSource: 'horizon' | 'rpc';
   readonly ingestStartLedger: number | null;
+  /** Subscription jobs run only when a signer is configured (S9). */
+  readonly subscriptions: {
+    readonly signerUrl: string;
+    readonly tlsKeyPath: string;
+    readonly tlsCertPath: string;
+    readonly tlsCaPath: string;
+    readonly keeperAddress: string;
+    readonly keeperMinBalanceXlm: number;
+    readonly eventsStartLedger: number | null;
+  } | null;
 }
 
 const EnvSchema = z.object({
@@ -24,6 +34,16 @@ const EnvSchema = z.object({
   INGEST_SOURCE: z.enum(['horizon', 'rpc']).default('horizon'),
   INGEST_START_LEDGER: z.coerce.number().int().positive().optional(),
   NODE_ENV: z.string().default('development'),
+  SIGNER_URL: z.url({ protocol: /^https$/ }).optional(),
+  WORKER_TLS_KEY: z.string().optional(),
+  WORKER_TLS_CERT: z.string().optional(),
+  WORKER_TLS_CA: z.string().optional(),
+  KEEPER_ADDRESS: z
+    .string()
+    .regex(/^G[A-Z2-7]{55}$/)
+    .optional(),
+  KEEPER_MIN_BALANCE_XLM: z.coerce.number().positive().default(50),
+  CONTRACT_EVENTS_START_LEDGER: z.coerce.number().int().positive().optional(),
 });
 
 export function loadWorkerConfig(
@@ -47,7 +67,30 @@ export function loadWorkerConfig(
   }
   if (key.asymmetricKeyType !== 'ed25519')
     return err(['WEBHOOK_SIGNING_KEY_PEM: must be an Ed25519 key']);
+  let subscriptions: WorkerConfig['subscriptions'] = null;
+  if (e.SIGNER_URL !== undefined) {
+    if (
+      e.WORKER_TLS_KEY === undefined ||
+      e.WORKER_TLS_CERT === undefined ||
+      e.WORKER_TLS_CA === undefined ||
+      e.KEEPER_ADDRESS === undefined
+    ) {
+      return err([
+        'SIGNER_URL set: WORKER_TLS_KEY, WORKER_TLS_CERT, WORKER_TLS_CA and KEEPER_ADDRESS are required',
+      ]);
+    }
+    subscriptions = {
+      signerUrl: e.SIGNER_URL,
+      tlsKeyPath: e.WORKER_TLS_KEY,
+      tlsCertPath: e.WORKER_TLS_CERT,
+      tlsCaPath: e.WORKER_TLS_CA,
+      keeperAddress: e.KEEPER_ADDRESS,
+      keeperMinBalanceXlm: e.KEEPER_MIN_BALANCE_XLM,
+      eventsStartLedger: e.CONTRACT_EVENTS_START_LEDGER ?? null,
+    };
+  }
   return ok({
+    subscriptions,
     port: e.WORKER_PORT,
     databaseUrl: e.DATABASE_URL_WORKER,
     sessionDatabaseUrl: e.DATABASE_URL_WORKER_SESSION,
