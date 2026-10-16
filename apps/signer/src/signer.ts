@@ -35,7 +35,12 @@ function send(res: ServerResponse, status: number, body: unknown): void {
  * The keeper signer (context §14.5): mTLS on the private network, one operation, signs
  * only what `guardKeeperTransaction` accepts, logs every decision. Holds the only hot key.
  */
-export function createSigner(o: SignerOptions): { server: Server; stats: SignerStats } {
+export function createSigner(o: SignerOptions): {
+  server: Server;
+  stats: SignerStats;
+  /** Swaps in rotated certificates for new connections; TLS 1.3 stays mandatory. */
+  reloadTls(tls: SignerOptions['tls']): void;
+} {
   const stats: SignerStats = { signed: 0, rejected: 0 };
   const keeperAddress = o.keeper.publicKey();
   const server = createServer(
@@ -106,5 +111,11 @@ export function createSigner(o: SignerOptions): { server: Server; stats: SignerS
       });
     },
   );
-  return { server, stats };
+  return {
+    server,
+    stats,
+    reloadTls(tls) {
+      server.setSecureContext({ key: tls.key, cert: tls.cert, ca: tls.ca, minVersion: 'TLSv1.3' });
+    },
+  };
 }

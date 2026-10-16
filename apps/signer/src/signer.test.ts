@@ -117,6 +117,8 @@ function call(
         path,
         method: 'POST',
         servername: 'localhost',
+        // Fresh connection per call: a reused keep-alive socket would skip the handshake.
+        agent: false,
         ...client,
         headers: { 'content-type': 'application/json' },
       },
@@ -220,5 +222,32 @@ describe('keeper signer (context §14.5)', () => {
         { xdr: keeperTx([charge()]) },
       ),
     ).rejects.toThrow();
+  });
+
+  it('serves rotated certificates after reloadTls and still refuses TLS 1.2', async () => {
+    signer.reloadTls({
+      key: file(rogue, 'signer.key'),
+      cert: file(rogue, 'signer.crt'),
+      ca: file(rogue, 'ca.crt'),
+    });
+    try {
+      const rotated = {
+        key: file(rogue, 'worker.key'),
+        cert: file(rogue, 'worker.crt'),
+        ca: file(rogue, 'ca.crt'),
+      };
+      expect((await call(rotated, { xdr: keeperTx([charge()]) })).status).toBe(200);
+      // Old chain no longer trusted in either direction.
+      await expect(call(worker(), { xdr: keeperTx([charge()]) })).rejects.toThrow();
+      await expect(
+        call({ ...rotated, maxVersion: 'TLSv1.2' } as Client, { xdr: keeperTx([charge()]) }),
+      ).rejects.toThrow();
+    } finally {
+      signer.reloadTls({
+        key: file(dir, 'signer.key'),
+        cert: file(dir, 'signer.crt'),
+        ca: file(dir, 'ca.crt'),
+      });
+    }
   });
 });

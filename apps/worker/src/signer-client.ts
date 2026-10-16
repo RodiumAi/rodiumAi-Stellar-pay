@@ -8,21 +8,21 @@ export interface SignerClient {
 /** mTLS client for the keeper signer (context §14.5): the worker's certificate is its identity. */
 export function createSignerClient(o: {
   readonly url: string;
-  readonly key: Buffer;
-  readonly cert: Buffer;
-  readonly ca: Buffer;
+  /** Current key/cert/CA; re-read so a rotated certificate is used without a restart. */
+  readonly tls: () => { readonly key: Buffer; readonly cert: Buffer; readonly ca: Buffer };
 }): SignerClient {
   const target = new URL('/v1/sign', o.url);
   return {
     sign(xdr) {
+      const { key, cert, ca } = o.tls();
       return new Promise((resolve) => {
         const req = request(
           target,
           {
             method: 'POST',
-            key: o.key,
-            cert: o.cert,
-            ca: o.ca,
+            key,
+            cert,
+            ca,
             minVersion: 'TLSv1.3',
             timeout: 10_000,
             headers: { 'content-type': 'application/json' },
