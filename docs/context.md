@@ -798,6 +798,8 @@ type NetworkConfig = {
   readonly merchant: StellarAddress;
   readonly subscriptionContractId: string;
   readonly maxFeeStroops: bigint;
+  /** Soroban transactions (fee includes the resource fee); changed in S9. */
+  readonly maxSorobanFeeStroops: bigint;
 };
 ```
 
@@ -871,7 +873,7 @@ The signer exposes one operation over mTLS on the private network: sign a keeper
 | Dispatch webhooks    | every 5 s                          | from `outbox_events`                                             |
 | Keeper balance check | every 5 min                        | alert below threshold                                            |
 
-Charging always simulates first. A simulation failure (insufficient balance or allowance) records a failed charge with a code and moves the subscription to `past_due` without submitting.
+Charging always simulates first. A simulation failure (insufficient balance or allowance) records a failed charge with a code and moves the subscription to `past_due` without submitting. Before counting it, the worker reads the subscription on-chain (`get`): if it is active and not yet due, the failure is a schedule mismatch and `next_charge_at` is resynced instead (S9: contract error codes are per contract — the USDC SAC's insufficient-balance error is also `Error(Contract, #10)`, the same number as our `NotDue`).
 
 Jobs run as in-process schedulers inside the worker; each claims rows with `FOR UPDATE SKIP LOCKED` in short transactions, so several worker replicas can run safely. All jobs are idempotent and safe to run twice. Graceful shutdown on `SIGTERM`: stop claiming, finish in-flight work within 25 seconds, release locks.
 
