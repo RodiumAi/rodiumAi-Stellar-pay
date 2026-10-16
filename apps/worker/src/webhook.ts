@@ -41,7 +41,7 @@ export async function deliverWebhook(
         'rp-signature': signWebhook(signer.privateKey, signer.keyId, nowSeconds, body),
         'rp-event-id': event.id,
       },
-      body,
+      body: new Uint8Array(body),
       redirect: 'error',
       signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
     });

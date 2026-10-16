@@ -231,6 +231,28 @@ describe('ingest pipeline (context §13.4)', () => {
     expect(metrics.get('receipts_applied_total')).toBe(2);
   });
 
+  it('first run without a start ledger pins "now" and never skips the next payment', async () => {
+    const p = await payment(10_000_000n);
+    const source = fakeSource(`fresh-${newId()}`, []);
+    const metrics = createMetrics();
+    const job = createIngestJob({
+      db: worker,
+      sessionPool: pool('worker', 1),
+      source,
+      rules,
+      startLedger: null,
+      metrics,
+      logger: silent,
+    });
+    await job.run(never);
+    // A cursor is pinned on the first pass even though no payment exists yet.
+    expect(await getCursor(worker, `payments:${source.name}`)).toBeDefined();
+    source.payments.push(observed(p.memo, '1.0000000'));
+    await job.run(never);
+    await job.release();
+    expect((await findPaymentById(worker, p.id))?.status).toBe('confirmed');
+  });
+
   it('reconciliation fills a gap behind the cursor, idempotently', async () => {
     const p = await payment(30_000_000n);
     const missed = observed(p.memo, '3.0000000');
