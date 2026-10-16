@@ -3,7 +3,8 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
-    "rootDir": "../../.."
+    "rootDir": "../../..",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
   },
   "include": [".", "../src", "../../../packages/db/test"]
 }
