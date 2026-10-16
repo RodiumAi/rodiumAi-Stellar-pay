@@ -1,0 +1,5 @@
+# Reviewed false positives (test fixtures only); one fingerprint per finding: commit:file:rule:line.
+# rp-local-token = throwaway local Redis container token; others are fake values in tests.
+289d514221dd14f98b6aab40e9a8a9bd18f0857c:scripts/redis-local.sh:curl-auth-header:19
+fd05fae8b54e815b241aeb71a018a4518e300d91:apps/api/src/units.test.ts:generic-api-key:161
+fd05fae8b54e815b241aeb71a018a4518e300d91:apps/api/test/api.int.test.ts:generic-api-key:49
