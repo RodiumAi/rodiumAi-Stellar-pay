@@ -17,7 +17,7 @@ export default defineConfig({
       {
         test: {
           name: 'int',
-          include: ['packages/db/test/**/*.int.test.ts'],
+          include: ['packages/db/test/**/*.int.test.ts', 'apps/api/test/**/*.int.test.ts'],
           globalSetup: ['packages/db/test/global-setup.ts'],
           testTimeout: 30_000,
           hookTimeout: 60_000,

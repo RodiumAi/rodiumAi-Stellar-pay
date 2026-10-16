@@ -7,9 +7,9 @@ cd "$(git rev-parse --show-toplevel)"
 
 base="$(git merge-base HEAD origin/main 2>/dev/null || true)"
 if [[ "${FORCE_DB:-0}" != "1" && -n "$base" ]] \
-  && git diff --quiet "$base" -- packages/db infra/supabase \
-  && git diff --quiet -- packages/db infra/supabase; then
-  echo "packages/db and infra/supabase unchanged; skipping DB integration tests"
+  && git diff --quiet "$base" -- packages/db infra/supabase apps/api \
+  && git diff --quiet -- packages/db infra/supabase apps/api; then
+  echo "packages/db, infra/supabase and apps/api unchanged; skipping DB integration tests"
   exit 0
 fi
 
