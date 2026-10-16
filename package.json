@@ -18,6 +18,7 @@
     "e2e:testnet:subscriptions": "node apps/api/scripts/e2e-testnet-subscriptions.mjs",
     "e2e:testnet": "node apps/api/scripts/e2e-testnet.mjs",
     "e2e:release": "./scripts/e2e-release.sh",
+    "e2e:remote": "node apps/api/scripts/e2e-remote.mjs",
     "load:sanity": "node apps/api/scripts/load-sanity.mjs",
     "checkout:build": "pnpm --filter @rp/checkout build && node scripts/check-bundle.mjs && pnpm --filter @rp/docs build",
     "test:redis": "vitest run --project redis-int",
