@@ -4,6 +4,20 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    "./contract-events": "./src/contract-events.ts",
+    "./horizon-source": "./src/horizon-source.ts",
+    "./ledger-source": "./src/ledger-source.ts",
+    "./network-check": "./src/network-check.ts",
+    "./observed-payment": "./src/observed-payment.ts",
+    "./rpc-source": "./src/rpc-source.ts",
+    "./sep7": "./src/sep7.ts",
+    "./subscribe-tx": "./src/subscribe-tx.ts",
+    "./xdr-guards": "./src/xdr-guards.ts"
+  },
+  "dependencies": {
+    "@rp/config": "workspace:*",
+    "@rp/core": "workspace:*",
+    "@stellar/stellar-sdk": "17.2.1",
+    "zod": "4.6.5"
   }
 }

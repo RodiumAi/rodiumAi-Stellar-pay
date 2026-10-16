@@ -19,6 +19,14 @@ export default defineConfig({
           hookTimeout: 60_000,
         },
       },
+      {
+        test: {
+          name: 'stellar-int',
+          include: ['packages/stellar/test/**/*.int.test.ts'],
+          testTimeout: 120_000,
+          hookTimeout: 240_000,
+        },
+      },
     ],
     coverage: {
       provider: 'v8',
