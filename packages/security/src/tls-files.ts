@@ -20,6 +20,7 @@ export interface TlsFiles {
  * A failed re-read (e.g. mid-rotation) keeps the previous material.
  */
 export function createTlsFiles(o: {
+  /** File path, or the PEM itself (see `read` below). */
   readonly keyPath: string;
   readonly certPath: string;
   readonly caPath: string;
@@ -28,8 +29,16 @@ export function createTlsFiles(o: {
   readonly read?: (path: string) => Buffer;
   readonly onReload?: (m: TlsMaterial) => void;
 }): TlsFiles {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
-  const read = o.read ?? ((path: string) => readFileSync(path));
+  // A value that is itself PEM is used as is: ECS injects secrets as environment variables,
+  // and a read-only container without a shell cannot write them to files. Inline material
+  // only changes on redeploy; files are re-read for rotation.
+  const read =
+    o.read ??
+    ((pathOrPem: string) =>
+      pathOrPem.includes('-----BEGIN ')
+        ? Buffer.from(pathOrPem.replaceAll('\\n', '\n'))
+        : // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
+          readFileSync(pathOrPem));
   const nowMs = o.nowMs ?? Date.now;
   const refreshMs = o.refreshMs ?? 60_000;
   const load = (): TlsMaterial => {
