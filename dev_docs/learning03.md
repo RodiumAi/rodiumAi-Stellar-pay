@@ -112,3 +112,42 @@ AWS KMS adapter without the SDK in `@rp/security`; secrets as mounted files
 - Verified with the real SDK against `nsmithuk/local-kms:3` (`AWS_ENDPOINT_URL`): round trip ok; other key and missing context → `InvalidCiphertextException`. `apps/api/scripts/aws-data-key.mjs` creates wrapped data keys (round-trips before printing; never prints the plaintext).
 - `@aws-sdk/client-kms` 3.1145.0 (+25 packages): `minimumReleaseAge` in pnpm refused the newest — let pnpm pick instead of pinning by hand.
 - Secrets Manager wiring = `FOO_FILE=/path` (`resolveSecretFiles` in `@rp/config`), used by api, worker and signer. Both set → error. The signer's file must sit under `--allow-fs-read`.
+
+### 2026-10-16 · S10 · worker · bug
+
+The kill switch would have canceled every subscription
+
+- What: found by the runbook review: while the contract is paused, every `charge` simulation fails with `Paused`, and the job counted it as a payment failure → `past_due` webhooks, then cancel after the retry schedule.
+- Fix: after a failed simulation the job asks `is_paused()`; if paused the charge row gets `failure_code = 'paused'`, the subscription is untouched and the 10-minute lease retries it. Regression test includes the post-pause success.
+- Prevent: when writing a runbook, trace what each running job does during the procedure.
+
+### 2026-10-16 · S10 · infra · bug
+
+Generic `FOO_FILE` loading swallowed `SSL_CERT_FILE`
+
+- What: the signer image refused to start under `--permission`: "SSL_CERT_FILE: cannot read /etc/ssl/certs/ca-certificates.crt (ERR_ACCESS_DENIED)".
+- Why: the base image sets `SSL_CERT_FILE`; `resolveSecretFiles` treated every `*_FILE` as a secret named `*`. Api/worker read the CA bundle into `SSL_CERT` silently.
+- Fix: only `SECRET_NAMES` are resolved. `check-image.sh` now also fails on "cannot read" (it had accepted the error as a normal config failure).
+- Prevent: never infer meaning from a naming convention other software also uses; allowlist.
+
+### 2026-10-16 · S10 · infra · decision
+
+Images: distroless/cc + the exact Node binary; checks in a script
+
+- `gcr.io/distroless/nodejs24-debian12` shipped Node 24.14.0 (we pin 24.21.0) → runtime is `distroless/cc-debian12:nonroot` with `/usr/local/bin/node` copied from the pinned build image. Non-root 65532, no shell, no package manager, starts on a read-only FS — asserted by `scripts/check-image.sh` (CI and release).
+- No buildx locally (Colima, classic builder): no `--mount` in Dockerfiles. A full build takes ~25 min on the 2-CPU VM; CI is the real gate.
+- CI tools are release binaries pinned by sha256, cross-checked against GitHub's asset digest (Trivy release tags were hijacked in 2026 — never `trivy-action@tag`).
+
+### 2026-10-16 · S10 · contract · decision
+
+Komet blocked on protocol 28 → model-based proptest instead
+
+- Komet v0.1.89 lacks host functions `m.b`/`m.c` (imported by every soroban-sdk 28 contract that reads a `#[contracttype]` or publishes an event) and its `require_auth` always succeeds. Verified against our WASM's import section and Komet's `host/map.md`.
+- Replacement: `random_operations_keep_every_invariant` (128 × ≤ 40 random ops, real auth + SAC, invariants after every step). A removed pause guard is caught. Re-check condition in `contracts/komet/README.md`.
+
+### 2026-10-16 · S10 · observability · decision
+
+Traces by hand, no auto-instrumentation; signer exports nothing
+
+- ESM auto-instrumentation needs loader hooks (import-in-the-middle) that fight `node --permission`; spans are created at boundaries instead (API request with route template names, each worker job pass, worker → signer client span with `traceparent`). The signer has no egress, so it logs the `trace_id` from `traceparent`.
+- mTLS files are re-read every 60 s (`createTlsFiles`); the signer swaps its secure context (`minVersion` must be passed again — `setSecureContext` replaces the whole context). Tests need `agent: false`: keep-alive sockets skip the new handshake.
