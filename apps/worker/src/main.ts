@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { loadConfig } from '@rp/config/app-config';
 import { cryptoRandomBytes } from '@rp/core/random';
@@ -7,11 +8,19 @@ import { createHorizonSource } from '@rp/stellar/horizon-source';
 import { verifyNetwork } from '@rp/stellar/network-check';
 import { createRpcSource } from '@rp/stellar/rpc-source';
 import { rpc } from '@stellar/stellar-sdk';
+import { createChargeJob } from './jobs/charge.js';
+import { createContractEventsJob } from './jobs/contract-events.js';
 import { createDispatchJob } from './jobs/dispatch.js';
 import { createExpireJob } from './jobs/expire.js';
 import { createIngestJob, createReconcileJob } from './jobs/ingest.js';
+import {
+  createAllowanceWarningJob,
+  createKeeperBalanceJob,
+  createTtlExtensionJob,
+} from './jobs/maintenance.js';
 import { createMetrics } from './metrics.js';
-import { startScheduler } from './scheduler.js';
+import { startScheduler, type Job } from './scheduler.js';
+import { createSignerClient } from './signer-client.js';
 import { loadWorkerConfig } from './worker-config.js';
 
 /** Context §15: stop claiming, finish in-flight work within 25 s, release locks. */
@@ -74,8 +83,71 @@ async function main(): Promise<void> {
     metrics,
     logger,
   });
+  const subscriptionJobs: Job[] = [];
+  const subs = cfg.value.subscriptions;
+  if (subs !== null) {
+    const signer = createSignerClient({
+      url: subs.signerUrl,
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
+      key: readFileSync(subs.tlsKeyPath),
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
+      cert: readFileSync(subs.tlsCertPath),
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-configured paths
+      ca: readFileSync(subs.tlsCaPath),
+    });
+    const chain = { contractId: network.subscriptionContractId, keeper: subs.keeperAddress };
+    subscriptionJobs.push(
+      createContractEventsJob({
+        db,
+        client: server,
+        contractId: chain.contractId,
+        startLedger: subs.eventsStartLedger,
+        metrics,
+        logger,
+      }),
+      createChargeJob({
+        db,
+        chain: server,
+        signer,
+        keeper: chain.keeper,
+        contractId: chain.contractId,
+        networkPassphrase: network.passphrase,
+        maxFeeStroops: network.maxSorobanFeeStroops,
+        now: () => new Date(),
+        randomBytes: cryptoRandomBytes,
+        metrics,
+        logger,
+      }),
+      createAllowanceWarningJob({
+        db,
+        latestLedger: async () => (await server.getLatestLedger()).sequence,
+        now: () => new Date(),
+        randomBytes: cryptoRandomBytes,
+      }),
+      createTtlExtensionJob({
+        db,
+        chain: server,
+        signer,
+        keeper: chain.keeper,
+        contractId: chain.contractId,
+        networkPassphrase: network.passphrase,
+        extendToLedgers: 3_000_000,
+        logger,
+      }),
+      createKeeperBalanceJob({
+        horizonUrl: network.horizonUrl,
+        keeper: chain.keeper,
+        minBalanceXlm: subs.keeperMinBalanceXlm,
+        fetch,
+        metrics,
+        logger,
+      }),
+    );
+  }
+
   const scheduler = startScheduler(
     [
+      ...subscriptionJobs,
       ingest,
       createReconcileJob({ db, source, rules, logger, metrics }),
       createExpireJob({ db, now: () => new Date(), randomBytes: cryptoRandomBytes }),
