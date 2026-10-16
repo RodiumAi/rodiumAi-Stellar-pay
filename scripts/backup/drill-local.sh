@@ -11,7 +11,8 @@ DRILL_DB=rodium_pay_drill
 SUPERUSER_URL="postgresql://postgres:postgres@${DB_CONTAINER}:5432"
 
 docker build -q -f infra/docker/Dockerfile.backup -t rp-backup:dev . >/dev/null
-work=$(mktemp -d)
+# Under the repo, not $TMPDIR: Colima only shares the home directory with the VM.
+work=$(mktemp -d "$PWD/.drill.XXXXXX")
 trap 'rm -rf "$work"; docker exec "$DB_CONTAINER" psql -U postgres -qc "DROP DATABASE IF EXISTS $DRILL_DB" >/dev/null' EXIT
 chmod 777 "$work"
 
