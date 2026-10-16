@@ -33,7 +33,6 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 | kysely                          | 0.29.6          | 2026-09-16              | S3     |
 | pg / @types/pg                  | 8.23.1 / 8.23.1 | 2026-09-30 / 2026-08-17 | S3     |
 | testcontainers                  | 12.2.0          | 2026-09-28              | S3     |
-| @stellar/stellar-sdk            | 17.2.1          | 2026-10-01              | S5     |
 | fastify                         | 5.12.5          | 2026-09-16              | S6     |
 | @fastify/helmet                 | 13.1.1          | 2026-08-19              | S6     |
 | @fastify/rate-limit             | 11.2.0          | 2026-07-29              | S6     |
@@ -69,12 +68,15 @@ TypeScript 7 (native) exists, but §3 specifies 5.x and typescript-eslint 8.71 s
 
 ## Contract (Rust, Sprint 4)
 
-| Crate / tool            | Pinned | Published  | Note                            |
-| ----------------------- | ------ | ---------- | ------------------------------- |
-| soroban-sdk             | 28.0.0 | 2026-09-18 | 29.0.0/29.0.1 are < 14 days old |
-| proptest (dev)          | 1.11.0 | 2026-03-24 | 1.12.0 is < 14 days old         |
-| libfuzzer-sys (fuzz)    | 0.4.13 | 2026-06-04 |                                 |
-| arbitrary (fuzz)        | 1.3.2  | —          | soroban-sdk 28 requires `~1.3`  |
-| cargo-fuzz (CI)         | 0.13.2 | 2026-06-09 | nightly-2025-09-18              |
-| cargo-scout-audit       | 0.3.17 | —          | detectors on nightly-2025-09-18 |
-| stellar-cli (CI, linux) | 28.1.0 | 2026-09-26 | sha256 `c1680dee…6462`          |
+| Crate / tool                   | Pinned                                        | Published                                                                     | Note                            |
+| ------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------- |
+| soroban-sdk                    | 28.0.0                                        | 2026-09-18                                                                    | 29.0.0/29.0.1 are < 14 days old |
+| proptest (dev)                 | 1.11.0                                        | 2026-03-24                                                                    | 1.12.0 is < 14 days old         |
+| libfuzzer-sys (fuzz)           | 0.4.13                                        | 2026-06-04                                                                    |                                 |
+| arbitrary (fuzz)               | 1.3.2                                         | —                                                                             | soroban-sdk 28 requires `~1.3`  |
+| cargo-fuzz (CI)                | 0.13.2                                        | 2026-06-09                                                                    | nightly-2025-09-18              |
+| cargo-scout-audit              | 0.3.17                                        | —                                                                             | detectors on nightly-2025-09-18 |
+| stellar-cli (CI, linux)        | 28.1.0                                        | 2026-09-26                                                                    | sha256 `c1680dee…6462`          |
+| SDF testnet RPC retention      | ~2,090 ledgers (~3 h)                         | `startLedger must be within the ledger range: 5214911 - 5216998` (2026-10-15) |
+| SDF testnet RPC classic events | emitted (CAP-67 `transfer` for `payment` ops) | sampled 40 USDC transfer events: 39 `invokeHostFunction`, 1 `payment`         |
+| Stellar Quickstart (tests)     | digest `4f8dfd69…9295`                        | Docker Hub `stellar/quickstart:latest`, 2026-10-12; test fixture only         |
