@@ -17,6 +17,7 @@
     "build:all": "pnpm typecheck && pnpm checkout:build",
     "e2e:testnet:subscriptions": "node apps/api/scripts/e2e-testnet-subscriptions.mjs",
     "e2e:testnet": "node apps/api/scripts/e2e-testnet.mjs",
+    "e2e:release": "./scripts/e2e-release.sh",
     "checkout:build": "pnpm --filter @rp/checkout build && node scripts/check-bundle.mjs",
     "test:redis": "vitest run --project redis-int",
     "redis:start": "./scripts/redis-local.sh start",
