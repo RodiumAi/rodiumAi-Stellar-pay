@@ -23,6 +23,9 @@ export default defineConfig({
             'apps/worker/test/**/*.int.test.ts',
           ],
           globalSetup: ['packages/db/test/global-setup.ts'],
+          // Files share one database; SKIP LOCKED claims in one file must not see another
+          // file's row locks, so integration files run one at a time.
+          fileParallelism: false,
           testTimeout: 30_000,
           hookTimeout: 60_000,
         },
