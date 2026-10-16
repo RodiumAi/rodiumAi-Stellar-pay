@@ -594,6 +594,7 @@ Rules:
 - Retries with exponential backoff and jitter: 10s, 1m, 5m, 30m, 2h, 6h, 12h, then `dead` with an alert. A `dead` event can be replayed from the admin CLI.
 - A `2xx` response marks delivery. Anything else, or a 10-second timeout, schedules a retry.
 - Delivery is at-least-once. The main app must deduplicate on `id`.
+- Claiming uses a lease (S7): one statement moves `next_attempt_at` 30 s ahead for the batch, and delivery runs outside any transaction, so a slow receiver never holds row locks. A crashed worker's events become due again when the lease ends.
 
 ### 10.2 Events
 
