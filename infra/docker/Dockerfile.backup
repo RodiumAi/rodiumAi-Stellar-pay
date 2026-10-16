@@ -1,0 +1,8 @@
+# Weekly logical export (context §7.6): pg_dump of schema `pay`, encrypted with age to a
+# recipient whose private key is held outside Supabase and AWS, uploaded to S3.
+# pg_dump matches the Supabase Postgres major (17). Runs as the image's postgres user.
+FROM docker.io/library/postgres:17.6-alpine3.22@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+RUN apk add --no-cache age aws-cli
+COPY scripts/backup/export.sh scripts/backup/restore.sh /usr/local/bin/
+USER postgres
+ENTRYPOINT ["/usr/local/bin/export.sh"]
