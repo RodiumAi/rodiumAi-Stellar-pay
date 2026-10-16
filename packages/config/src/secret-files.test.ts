@@ -52,10 +52,15 @@ describe('secret files (context §12.4)', () => {
     });
   });
 
+  it('leaves unrelated *_FILE variables alone (SSL_CERT_FILE from the base image)', () => {
+    const r = resolveSecretFiles({ SSL_CERT_FILE: '/etc/ssl/certs/ca-certificates.crt' }, read);
+    expect(r).toEqual({ ok: true, value: { SSL_CERT_FILE: '/etc/ssl/certs/ca-certificates.crt' } });
+  });
+
   it('ignores empty _FILE values and leaves other keys alone', () => {
-    expect(resolveSecretFiles({ X_FILE: '', Y: '1' }, read)).toEqual({
+    expect(resolveSecretFiles({ KEEPER_SECRET_FILE: '', Y: '1' }, read)).toEqual({
       ok: true,
-      value: { X_FILE: '', Y: '1' },
+      value: { KEEPER_SECRET_FILE: '', Y: '1' },
     });
   });
 });
