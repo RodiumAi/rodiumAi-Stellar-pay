@@ -2,7 +2,7 @@
 
 Source of truth: `docs/context.md` (formerly `soroban-context.md`). This plan orders the work; the context file defines it. If they disagree, the context file wins and this plan gets corrected.
 
-Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Sprint 5 in progress.**
+Status: **GitHub practice (plan §1) adopted 2026-10-15. Plan §5 decisions answered 2026-10-15 (accounts provided when their sprint is reached). Phase A (S0–S5) complete; Sprint 6 next.**
 
 ---
 
@@ -466,7 +466,7 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contra
 | S2 Config + security | `sprint/02-config-security` | done (PR #4) | `v0.2.0` |
 | S3 DB                | `sprint/03-db`              | done (PR #5) | `v0.3.0` |
 | S4 Contract          | `sprint/04-contract`        | done (PR #6) | `v0.4.0` |
-| S5 Stellar           | `sprint/05-stellar`         | in progress  | —        |
+| S5 Stellar           | `sprint/05-stellar`         | done (PR #8) | `v0.5.0` |
 | S6 API               | `sprint/06-api`             | not started  | —        |
 | S7 Worker            | `sprint/07-worker-payments` | not started  | —        |
 | S8 Checkout          | `sprint/08-checkout`        | not started  | —        |
