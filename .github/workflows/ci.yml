@@ -44,6 +44,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:start
       - run: pnpm test:int
+      - run: pnpm redis:start
+      - run: pnpm test:redis
 
   stellar-integration:
     runs-on: ubuntu-24.04

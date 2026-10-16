@@ -57,6 +57,8 @@ async function main(): Promise<void> {
     url: api.value.upstash.url,
     token: api.value.upstash.token,
     retry: { retries: 1 },
+    // Values are opaque strings to us; auto-JSON-decoding would break the FX cache.
+    automaticDeserialization: false,
   });
   const kv = createUpstashKv(redis);
   const backstop = createInProcessLimiter(BACKSTOP_PER_MINUTE, 60_000);

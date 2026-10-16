@@ -25,6 +25,12 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'redis-int',
+          include: ['apps/api/test/**/*.redis.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'stellar-int',
           include: ['packages/stellar/test/**/*.int.test.ts'],
           testTimeout: 120_000,

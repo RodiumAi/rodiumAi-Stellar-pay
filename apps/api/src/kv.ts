@@ -18,6 +18,7 @@ function assertTtl(ttlSeconds: number): void {
   }
 }
 
+/** `redis` must be created with `automaticDeserialization: false` (values are opaque strings). */
 export function createUpstashKv(redis: Redis): KvStore {
   return {
     async setIfAbsent(key, ttlSeconds) {
