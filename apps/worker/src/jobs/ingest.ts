@@ -3,7 +3,7 @@ import { instant } from '@rp/core/time';
 import { uuidV7 } from '@rp/core/uuid-v7';
 import type { Db } from '@rp/db/connection';
 import { getCursor, saveCursor } from '@rp/db/cursors';
-import { tryAcquireLeaderLock, type LeaderLock } from '@rp/db/leader-lock';
+import { INGESTER_LEASE, releaseLease, tryAcquireLease } from '@rp/db/leader-lease';
 import {
   applyPaymentReceipt,
   storeUnmatchedReceipt,
@@ -15,7 +15,6 @@ import {
   type MatchingRules,
   type ObservedPayment,
 } from '@rp/stellar/observed-payment';
-import type pg from 'pg';
 import type { Metrics } from '../metrics.js';
 import type { Job, JobLogger } from '../scheduler.js';
 
@@ -131,8 +130,10 @@ export async function processPage(
 
 export interface IngestDeps {
   readonly db: Db;
-  /** Dedicated session connection: advisory locks are session-scoped (§7.5). */
-  readonly sessionPool: pg.Pool;
+  /** This process's identity for the ingest lease (unique per replica). */
+  readonly holder: string;
+  /** Lease length; renewed every pass and before every page (default 30 s). */
+  readonly leaseSeconds?: number;
   readonly source: LedgerSource;
   readonly rules: MatchingRules;
   readonly startLedger: number | null;
@@ -142,22 +143,26 @@ export interface IngestDeps {
   readonly maxPagesPerPass?: number;
 }
 
-/** Ingest job: only the advisory-lock leader runs; other replicas are hot standbys. */
+/**
+ * Ingest job: only the lease holder runs; other replicas are hot standbys and take over
+ * when the lease expires (a crashed leader) or is released (graceful shutdown). Matching
+ * is idempotent, so a stalled leader overlapping with its successor cannot double-count.
+ */
 export function createIngestJob(
   deps: IngestDeps,
   intervalMs = 2000,
 ): Job & { release(): Promise<void> } {
-  let session: pg.PoolClient | null = null;
-  let lock: LeaderLock | null = null;
+  let leader = false;
   const cursorName = `payments:${deps.source.name}`;
+  const leaseSeconds = deps.leaseSeconds ?? 30;
 
   const ensureLeader = async (): Promise<boolean> => {
-    if (lock !== null) return true;
-    session ??= await deps.sessionPool.connect();
-    lock = await tryAcquireLeaderLock(session);
-    if (lock !== null) deps.logger.info({ source: deps.source.name }, 'became ingest leader');
-    deps.metrics.set('ingest_is_leader', lock === null ? 0 : 1);
-    return lock !== null;
+    const held = await tryAcquireLease(deps.db, INGESTER_LEASE, deps.holder, leaseSeconds);
+    if (held && !leader) deps.logger.info({ source: deps.source.name }, 'became ingest leader');
+    if (!held && leader) deps.logger.warn({ source: deps.source.name }, 'lost the ingest lease');
+    leader = held;
+    deps.metrics.set('ingest_is_leader', held ? 1 : 0);
+    return held;
   };
 
   /**
@@ -178,8 +183,9 @@ export function createIngestJob(
     name: 'ingest',
     intervalMs,
     async run(signal) {
-      if (!(await ensureLeader())) return;
       for (let i = 0; i < (deps.maxPagesPerPass ?? 20) && !signal.aborted; i++) {
+        // Renew before every page: a pass never outlives the lease it started with.
+        if (!(await ensureLeader())) return;
         let saved = await getCursor(deps.db, cursorName);
         if (saved === undefined) {
           await startingPosition();
@@ -208,10 +214,8 @@ export function createIngestJob(
       }
     },
     async release() {
-      if (lock !== null) await lock.release();
-      session?.release();
-      lock = null;
-      session = null;
+      if (leader) await releaseLease(deps.db, INGESTER_LEASE, deps.holder);
+      leader = false;
     },
   };
 }

@@ -49,7 +49,6 @@ console.log(
 const local = {
   DATABASE_URL_API: url('rp_api', passwords.api),
   DATABASE_URL_WORKER: url('rp_worker', passwords.worker),
-  DATABASE_URL_WORKER_SESSION: url('rp_worker', passwords.worker),
   DATABASE_URL_READONLY: url('rp_readonly', passwords.readonly),
   DATABASE_URL_OWNER: url('rp_owner', passwords.owner),
   DATABASE_URL_ADMIN: url('postgres', 'postgres'),

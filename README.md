@@ -96,6 +96,8 @@ project (staging or production):
    (pooler URLs with `sslmode=verify-full` and the pinned CA) and checks each role can connect.
    It prints no passwords. Re-running is safe; `ROTATE=1 pnpm db:setup:supabase` rotates the
    role passwords.
+   If the project's session pooler (5432) does not answer, setup uses the transaction pooler
+   (6543) automatically — nothing in the service needs session mode.
 5. Start the services as usual (`pnpm api:start`, …) — they now use the cloud project.
 
 In Kubernetes the URLs come from AWS Secrets Manager (`rodium-pay/*/DATABASE_URL_*`, mounted

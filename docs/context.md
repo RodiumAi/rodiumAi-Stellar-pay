@@ -463,16 +463,16 @@ Table privileges, not policies, decide what each role can do; the policies only 
 
 ### 7.5 Connections (Supavisor)
 
-| Process              | Connection                                                  | Why                                                                          |
-| -------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| API                  | Supavisor **transaction mode** (port 6543)                  | Short queries, many processes                                                |
-| Worker (jobs)        | Supavisor **transaction mode**                              | Same                                                                         |
-| Ingester leader lock | Supavisor **session mode** (port 5432) or direct connection | `pg_try_advisory_lock` is session-scoped and must survive between statements |
-| Migrations           | Direct or session mode                                      | DDL and session settings                                                     |
+| Process         | Connection                                 | Why                                                                                                                |
+| --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| API             | Supavisor **transaction mode** (port 6543) | Short queries, many processes                                                                                      |
+| Worker (jobs)   | Supavisor **transaction mode**             | Same                                                                                                               |
+| Ingester leader | Supavisor **transaction mode**             | Lease row `leader_leases` (S11, replaced the session advisory lock): one atomic upsert per renewal, database clock |
+| Migrations      | Any mode (transaction mode works)          | One transaction per file with `pg_advisory_xact_lock` (S11)                                                        |
 
 - Transaction mode does not support named prepared statements. Use plain parameterized queries (the default in `pg` with Kysely) and never enable statement naming.
 - Pooler usernames have the form `rp_api.<project_ref>`.
-- Client pool sizes: 10 per API process, 5 per worker process, 1 dedicated session connection for the leader lock.
+- Client pool sizes: 10 per API process, 5 per worker process. No session-mode connection is needed (S11: the shared pooler's session mode was unusable for the project).
 - Session-level `SET` is forbidden in transaction mode; use `SET LOCAL` inside a transaction or per-role defaults (§7.3).
 
 ### 7.6 Backup and recovery

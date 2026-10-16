@@ -28,6 +28,7 @@ describe('migrations', () => {
       '0003_cancel_incomplete_subscriptions.sql',
       '0004_api_records_allowance.sql',
       '0005_subscription_activation_tx.sql',
+      '0006_leader_leases.sql',
     ]);
   });
 
@@ -64,6 +65,7 @@ describe('migrations', () => {
       'audit_log',
       'chain_receipts',
       'ingest_cursors',
+      'leader_leases',
       'outbox_events',
       'payments',
       'subscription_charges',

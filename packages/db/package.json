@@ -19,10 +19,10 @@
       "types": "./dist/cursors.d.ts",
       "default": "./dist/cursors.js"
     },
-    "./leader-lock": {
-      "@rp/source": "./src/leader-lock.ts",
-      "types": "./dist/leader-lock.d.ts",
-      "default": "./dist/leader-lock.js"
+    "./leader-lease": {
+      "@rp/source": "./src/leader-lease.ts",
+      "types": "./dist/leader-lease.d.ts",
+      "default": "./dist/leader-lease.js"
     },
     "./migrate": {
       "@rp/source": "./src/migrate.ts",

@@ -96,8 +96,6 @@ spec:
             - { name: WORKER_TLS_CA, value: /run/mtls/ca.crt }
             - { name: WEBHOOK_SIGNING_KEY_PEM_FILE, value: /run/secrets/WEBHOOK_SIGNING_KEY_PEM }
             - { name: DATABASE_URL_WORKER_FILE, value: /run/secrets/DATABASE_URL_WORKER }
-            - name: DATABASE_URL_WORKER_SESSION_FILE
-              value: /run/secrets/DATABASE_URL_WORKER_SESSION
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

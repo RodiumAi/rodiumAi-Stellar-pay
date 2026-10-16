@@ -17,7 +17,7 @@ import {
   type xdr,
 } from '@stellar/stellar-sdk';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { db, pool } from '../../../packages/db/test/fixtures.js';
+import { db, newId } from '../../../packages/db/test/fixtures.js';
 import { appConfig, harness, paymentBody, signed } from '../../api/test/harness.js';
 import { createDispatchJob } from '../src/jobs/dispatch.js';
 import { createIngestJob } from '../src/jobs/ingest.js';
@@ -138,7 +138,7 @@ describe('end to end on Quickstart', () => {
     const metrics = createMetrics();
     const ingest = createIngestJob({
       db: worker,
-      sessionPool: pool('worker', 1),
+      holder: `test-${newId()}`,
       source: createHorizonSource(BASE, merchant.publicKey(), { fetch }),
       rules: { merchant: merchant.publicKey(), usdc: { code: 'USDC', issuer: issuer.publicKey() } },
       startLedger,
