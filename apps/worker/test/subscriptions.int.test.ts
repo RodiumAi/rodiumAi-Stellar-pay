@@ -2,7 +2,11 @@ import { randomBytes } from 'node:crypto';
 import { err, ok } from '@rp/core/result';
 import { cryptoRandomBytes } from '@rp/core/random';
 import { DAY } from '@rp/core/time';
-import { findSubscriptionById, insertSubscription } from '@rp/db/subscriptions';
+import {
+  findSubscriptionById,
+  insertSubscription,
+  recordSubscribeSubmission,
+} from '@rp/db/subscriptions';
 import type { SorobanClient } from '@rp/stellar/soroban';
 import {
   Account,
@@ -449,6 +453,72 @@ describe('contract event sync (context §13.4)', () => {
     expect(cancel?.payload).toMatchObject({ canceled_by: 'subscriber' });
     await job.run(never);
     expect((await events(sub.id)).length).toBe(2);
+  });
+  it('activates a subscription whose checkout wait timed out, from its sub_created event', async () => {
+    const created = await insertSubscription(db('api'), newSubscription());
+    if (!created.ok) throw new Error(created.error);
+    const id = created.value.row.id;
+    const subscriber = Keypair.random().publicKey();
+    const txHash = randomBytes(32);
+    // What checkout submit records (as rp_api) before sending the transaction.
+    expect(
+      await recordSubscribeSubmission(db('api'), id, {
+        txHash,
+        subscriberAddress: subscriber,
+        allowanceExpiresLedger: 777_777,
+      }),
+    ).toBe(true);
+    contractSeq += 1n;
+    const subId = contractSeq;
+    const next = BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400);
+    const createdEvent = (who: string, hash: Buffer) => ({
+      ...event(
+        'sub_created',
+        subId,
+        nativeToScVal(
+          { subscriber: new Address(who), plan_id: 1, price: 99_900_000n, next_charge_at: next },
+          {
+            type: {
+              subscriber: ['symbol', 'address'],
+              plan_id: ['symbol', 'u32'],
+              price: ['symbol', 'i128'],
+              next_charge_at: ['symbol', 'u64'],
+            },
+          },
+        ),
+      ),
+      txHash: hash.toString('hex'),
+    });
+    const run = (list: rpc.Api.EventResponse[]) =>
+      createContractEventsJob({
+        db: worker,
+        // Always returns the list: the cursor saved by earlier tests would hide it.
+        client: {
+          ...eventsClient(list),
+          getEvents: () => eventsClient(list).getEvents({} as never),
+        },
+        contractId,
+        startLedger: 1,
+        metrics: createMetrics(),
+        logger: silent,
+      }).run(never);
+
+    // Another wallet's sub_created in the same transaction hash does not activate it.
+    await run([createdEvent(Keypair.random().publicKey(), txHash)]);
+    expect(await findSubscriptionById(worker, id)).toMatchObject({ status: 'incomplete' });
+
+    await run([createdEvent(subscriber, txHash)]);
+    expect(await findSubscriptionById(worker, id)).toMatchObject({
+      status: 'active',
+      subscriber_address: subscriber,
+      contract_subscription_id: subId,
+      allowance_expires_ledger: 777_777,
+      next_charge_at: new Date(Number(next) * 1000),
+    });
+    expect((await events(id)).map((e) => e.event_type)).toEqual(['subscription.activated']);
+    // Replaying the event changes nothing.
+    await run([createdEvent(subscriber, txHash)]);
+    expect((await events(id)).length).toBe(1);
   });
 });
 

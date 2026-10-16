@@ -172,6 +172,44 @@ export async function activateSubscription(
     .executeTakeFirst();
 }
 
+/**
+ * Checkout submit, before sending: remembers which transaction will create this
+ * subscription so the worker can activate it from the contract event if the API's own
+ * wait times out. Only on rows still `incomplete`.
+ */
+export async function recordSubscribeSubmission(
+  db: Executor,
+  id: string,
+  s: {
+    readonly txHash: Buffer;
+    readonly subscriberAddress: string;
+    readonly allowanceExpiresLedger: number;
+  },
+): Promise<boolean> {
+  const r = await db
+    .updateTable('subscriptions')
+    .set({
+      activation_tx_hash: s.txHash,
+      subscriber_address: s.subscriberAddress,
+      allowance_expires_ledger: s.allowanceExpiresLedger,
+    })
+    .where('id', '=', id)
+    .where('status', '=', 'incomplete')
+    .executeTakeFirst();
+  return r.numUpdatedRows > 0n;
+}
+
+export async function findSubscriptionByActivationTx(
+  db: Executor,
+  txHash: Buffer,
+): Promise<SubscriptionRow | undefined> {
+  return db
+    .selectFrom('subscriptions')
+    .selectAll()
+    .where('activation_tx_hash', '=', txHash)
+    .executeTakeFirst();
+}
+
 /** Number of successful charges so far; the next charge's `period_index`. */
 export async function countSucceededCharges(db: Executor, subscriptionId: string): Promise<number> {
   const row = await db

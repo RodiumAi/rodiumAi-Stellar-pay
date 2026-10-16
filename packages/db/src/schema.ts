@@ -53,6 +53,8 @@ export interface SubscriptionsTable {
   current_period_end: Date | null;
   next_charge_at: Date | null;
   allowance_expires_ledger: number | null;
+  /** Hash of the subscribe transaction recorded at checkout submit (migration 0005). */
+  activation_tx_hash: Buffer | null;
   failed_attempts: ColumnType<number, number | undefined, number>;
   checkout_token_hash: Buffer;
   return_url: string;
