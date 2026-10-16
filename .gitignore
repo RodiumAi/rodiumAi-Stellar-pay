@@ -46,3 +46,6 @@ contracts/**/test_snapshots/
 
 # checkout type output
 apps/checkout/dist-types/
+
+# dev mTLS material
+.mtls/
