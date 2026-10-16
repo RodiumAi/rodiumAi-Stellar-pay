@@ -19,7 +19,9 @@ function fakeKms(): AwsKmsApi & { calls: string[] } {
       const key = keys.get(KeyId);
       if (key === undefined) return Promise.reject(new Error('NotFoundException'));
       const nonce = randomBytes(12);
-      const c = createCipheriv('aes-256-gcm', key, nonce).setAAD(aad(KeyId, EncryptionContext));
+      const c = createCipheriv('aes-256-gcm', key, nonce, { authTagLength: 16 }).setAAD(
+        aad(KeyId, EncryptionContext),
+      );
       const ct = Buffer.concat([c.update(Plaintext), c.final()]);
       return Promise.resolve({ CiphertextBlob: Buffer.concat([nonce, ct, c.getAuthTag()]) });
     },
@@ -29,9 +31,9 @@ function fakeKms(): AwsKmsApi & { calls: string[] } {
       if (key === undefined) return Promise.reject(new Error('NotFoundException'));
       const buf = Buffer.from(CiphertextBlob);
       try {
-        const d = createDecipheriv('aes-256-gcm', key, buf.subarray(0, 12)).setAAD(
-          aad(KeyId, EncryptionContext),
-        );
+        const d = createDecipheriv('aes-256-gcm', key, buf.subarray(0, 12), {
+          authTagLength: 16,
+        }).setAAD(aad(KeyId, EncryptionContext));
         d.setAuthTag(buf.subarray(buf.length - 16));
         const pt = Buffer.concat([d.update(buf.subarray(12, buf.length - 16)), d.final()]);
         return Promise.resolve({ Plaintext: pt });
