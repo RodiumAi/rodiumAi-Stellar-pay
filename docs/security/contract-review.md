@@ -56,9 +56,18 @@ Random subscribe/advance/charge/cancel/pause/reprice sequences; asserts locked p
 | ---- | -------- | ---------------------- |
 | —    | —        | pending first long run |
 
-### Komet (Runtime Verification) — deferred to S10
+### Komet (Runtime Verification) — blocked (checked S10, 2026-10-16)
 
-Requires Nix (`kup`); to run in CI in Sprint 10 for property proofs of the §14.3 invariants.
+Komet v0.1.89 (newest, 2026-08-20) cannot execute soroban-sdk 28 contracts: our WASM imports
+the protocol-28 host functions `m.b`/`m.c` (sparse map ↔ linear memory), which Komet's
+`host/map.md` does not implement (`m._`…`m.a` only), and its `require_auth` is a placeholder
+that always succeeds, so auth invariants could not be checked anyway. Details and the
+re-check condition: `contracts/komet/README.md`.
+
+**Replacement (S10):** model-based proptest `random_operations_keep_every_invariant` in
+`contracts/subscription/src/test.rs` — 128 random sequences of up to 40 operations against the
+real contract with real auth and a real SAC, every §14.3 invariant asserted after every step.
+Verified to catch a removed pause guard. Property testing, not proof.
 
 ### Certora Sunbeam (optional) — S10
 
@@ -79,11 +88,11 @@ Requires Nix (`kup`); to run in CI in Sprint 10 for property proofs of the §14.
 
 ## Sign-off (mainnet)
 
-| Item                                                  | Done |
-| ----------------------------------------------------- | ---- |
-| Final WASM hash recorded and matches the deployed one | ☐    |
-| Scout clean (critical/medium/minor = 0) on that hash  | ☐    |
-| ≥ 1 h fuzz run clean on that hash                     | ☐    |
-| Komet properties pass (S10)                           | ☐    |
-| Exposure caps configured (plan §6.3)                  | ☐    |
-| Admin and merchant are multisig accounts              | ☐    |
+| Item                                                                      | Done |
+| ------------------------------------------------------------------------- | ---- |
+| Final WASM hash recorded and matches the deployed one                     | ☐    |
+| Scout clean (critical/medium/minor = 0) on that hash                      | ☐    |
+| ≥ 1 h fuzz run clean on that hash                                         | ☐    |
+| Model-based §14.3 proptest passes on that hash (Komet blocked, see above) | ☐    |
+| Exposure caps configured (plan §6.3)                                      | ☐    |
+| Admin and merchant are multisig accounts                                  | ☐    |
