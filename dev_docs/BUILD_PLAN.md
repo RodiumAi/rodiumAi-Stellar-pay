@@ -470,8 +470,8 @@ Exit: `v1.0.0-rc.N` on staging. **Mainnet `v1.0.0` only after**: plan §6 contra
 | S6 API               | `sprint/06-api`             | done (PR #9)  | `v0.6.0` |
 | S7 Worker            | `sprint/07-worker-payments` | done (PR #10) | `v0.7.0` |
 | S8 Checkout          | `sprint/08-checkout`        | done (PR #11) | `v0.8.0` |
-| S9 Subscriptions     | `sprint/09-subscriptions`   | not started   | —        |
-| S10 Hardening        | `sprint/10-hardening`       | not started   | —        |
+| S9 Subscriptions     | `sprint/09-subscriptions`   | done (PR #12) | `v0.9.0` |
+| S10 Hardening        | `sprint/10-hardening`       | in progress   | —        |
 | S11 Release          | `sprint/11-release`         | not started   | —        |
 
 ---
