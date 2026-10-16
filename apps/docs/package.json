@@ -1,0 +1,13 @@
+{
+  "name": "@rp/docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "highlight.js": "11.12.0",
+    "marked": "18.0.14"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

@@ -15,6 +15,7 @@ import { sql } from 'kysely';
 import { fileURLToPath } from 'node:url';
 import { loadApiConfig } from './api-config.js';
 import { loadCheckoutAssets } from './checkout/routes.js';
+import { loadDocsSite } from './docs/routes.js';
 import { createExchangeRateApi } from './fx.js';
 import { createUpstashKv } from './kv.js';
 import { createInProcessLimiter, createUpstashLimiter } from './rate-limit.js';
@@ -105,6 +106,16 @@ async function main(): Promise<void> {
     allowHttp: app.value.network.rpcUrl.startsWith('http://'),
   });
   const checkout = { assets: loadCheckoutAssets(assetsDir), horizonFetch: fetch, soroban };
+  // Documentation site served at / (built by `pnpm --filter @rp/docs build`). Optional: the
+  // API runs without it, it just answers 404 at /.
+  const docsDir =
+    process.env['DOCS_ASSETS_DIR'] ?? fileURLToPath(new URL('../../docs/dist', import.meta.url));
+  let docs;
+  try {
+    docs = loadDocsSite(docsDir);
+  } catch (error) {
+    logger.warn({ err: error }, 'documentation site not found; serving the API only');
+  }
 
   const server = buildServer(
     {
@@ -126,6 +137,7 @@ async function main(): Promise<void> {
       },
     },
     checkout,
+    docs,
   );
 
   const shutdown = (signal: string): void => {

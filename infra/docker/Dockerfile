@@ -13,6 +13,7 @@ WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/api/package.json apps/api/
 COPY apps/checkout/package.json apps/checkout/
+COPY apps/docs/package.json apps/docs/
 COPY apps/signer/package.json apps/signer/
 COPY apps/worker/package.json apps/worker/
 COPY packages/config/package.json packages/config/
@@ -24,12 +25,14 @@ COPY packages/telemetry/package.json packages/telemetry/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN pnpm exec tsc --build apps/api apps/worker apps/signer \
- && pnpm --filter @rp/checkout build
+ && pnpm --filter @rp/checkout build \
+ && pnpm --filter @rp/docs build
 # Production-only trees: each app with its runtime dependencies and built workspace packages.
 RUN for app in api worker signer; do \
       pnpm --filter "@rp/$app" deploy --legacy --prod "/out/$app" || exit 1; \
     done \
- && cp -r apps/checkout/dist /out/api/checkout
+ && cp -r apps/checkout/dist /out/api/checkout \
+ && cp -r apps/docs/dist /out/api/docs
 
 # distroless/cc (glibc + libstdc++, no shell) plus the exact Node binary from the build
 # image: distroless/nodejs24 lagged behind (24.14.0 vs the pinned 24.21.0).
@@ -44,7 +47,7 @@ FROM runtime AS api
 COPY --from=build /out/api /app
 # Public Supabase root CA for sslmode=verify-full (sslrootcert=/app/certs/…).
 COPY infra/supabase/supabase-root-2021-ca.crt /app/certs/supabase-root-2021-ca.crt
-ENV CHECKOUT_ASSETS_DIR=/app/checkout
+ENV CHECKOUT_ASSETS_DIR=/app/checkout DOCS_ASSETS_DIR=/app/docs
 EXPOSE 8080
 CMD ["dist/main.js"]
 
