@@ -29,17 +29,21 @@ describe('scheduler (context §15)', () => {
   it('runs jobs repeatedly and drains in-flight work on stop', async () => {
     let runs = 0;
     let finishedAfterStop = false;
+    // Stop while the second pass is in flight (a fixed delay could land between passes).
+    let secondStarted: () => void = () => undefined;
+    const inSecond = new Promise<void>((r) => (secondStarted = r));
     const job: Job = {
       name: 'slow',
       intervalMs: 5,
       async run(signal) {
         runs += 1;
+        if (runs === 2) secondStarted();
         await new Promise((r) => setTimeout(r, 30));
         if (signal.aborted) finishedAfterStop = true;
       },
     };
     const s = startScheduler([job], silent);
-    await new Promise((r) => setTimeout(r, 100));
+    await inSecond;
     const { drained } = await s.stop(1000);
     expect(drained).toBe(true);
     expect(runs).toBeGreaterThan(1);
