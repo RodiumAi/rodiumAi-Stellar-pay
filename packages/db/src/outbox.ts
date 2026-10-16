@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import type { Executor, Tx } from './connection.js';
 import type { OutboxRow } from './schema.js';
 
@@ -60,4 +61,57 @@ export async function markAttemptFailed(
     .where('id', '=', id)
     .where('status', '=', 'pending')
     .execute();
+}
+
+/**
+ * Claims due events by pushing `next_attempt_at` forward by a lease, in one short
+ * statement. Delivery then happens outside any transaction (a slow receiver must not
+ * hold row locks); if the worker dies, the event becomes due again when the lease ends.
+ */
+export async function leaseDueEvents(
+  db: Executor,
+  now: Date,
+  limit: number,
+  leaseSeconds: number,
+): Promise<OutboxRow[]> {
+  const leaseUntil = new Date(now.getTime() + leaseSeconds * 1000);
+  return db
+    .updateTable('outbox_events')
+    .set({ next_attempt_at: leaseUntil })
+    .where(
+      'id',
+      'in',
+      db
+        .selectFrom('outbox_events')
+        .select('id')
+        .where('status', '=', 'pending')
+        .where('next_attempt_at', '<=', now)
+        .orderBy('next_attempt_at')
+        .limit(limit)
+        .forUpdate()
+        .skipLocked(),
+    )
+    .returningAll()
+    .execute();
+}
+
+/** Admin replay of a `dead` event: back to pending, due now, attempts reset. */
+export async function requeueDeadEvent(db: Executor, id: string, now: Date): Promise<boolean> {
+  const row = await db
+    .updateTable('outbox_events')
+    .set({ status: 'pending', attempts: 0, next_attempt_at: now, last_error: null })
+    .where('id', '=', id)
+    .where('status', '=', 'dead')
+    .returning('id')
+    .executeTakeFirst();
+  return row !== undefined;
+}
+
+export async function countDeadEvents(db: Executor): Promise<number> {
+  const row = await db
+    .selectFrom('outbox_events')
+    .select(sql<number>`count(*)::int`.as('n'))
+    .where('status', '=', 'dead')
+    .executeTakeFirstOrThrow();
+  return row.n;
 }
