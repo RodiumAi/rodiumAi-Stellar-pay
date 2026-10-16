@@ -300,7 +300,8 @@ CREATE TABLE subscriptions (
   canceled_at               timestamptz,
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz NOT NULL DEFAULT now(),
-  CHECK (status = 'incomplete' OR (subscriber_address IS NOT NULL AND contract_subscription_id IS NOT NULL))
+  -- Migration 0003 (S6): canceled without on-chain ids is allowed (merchant cancels before the user subscribed).
+  CHECK (status IN ('incomplete', 'canceled') OR (subscriber_address IS NOT NULL AND contract_subscription_id IS NOT NULL))
 );
 CREATE INDEX subscriptions_due_idx ON subscriptions (next_charge_at)
   WHERE status IN ('active', 'past_due');
@@ -502,8 +503,9 @@ One Upstash Redis database per environment, accessed over HTTPS with `@upstash/r
 | `rp:rl:api:{keyId}`        | API rate limit (`@upstash/ratelimit`, sliding window) | 60s  | fail open, with a lower in-process limit as backstop |
 | `rp:rl:ip:{ip}`            | checkout rate limit per IP                            | 60s  | fail open, in-process backstop                       |
 | `rp:nonce:{keyId}:{nonce}` | HMAC replay protection (`SET NX EX`)                  | 600s | **fail closed**                                      |
-| `rp:idem:{key}`            | idempotency fast path                                 | 24h  | fall back to Postgres unique constraint              |
 | `rp:status:{paymentId}`    | checkout status cache for polling                     | 5s   | read Postgres                                        |
+
+Idempotency uses Postgres only (S6): the unique `idempotency_key` + `request_hash` check is one indexed query, and a Redis copy of the response would put live checkout URLs into Upstash. `rp:fx:usd` caches the ExchangeRate-API table until the provider's next update (fail open: read the provider).
 
 ### 8.3 Why there is no Redis queue
 
@@ -651,7 +653,7 @@ Subscription:
 
 ### 11.2 Checkout token
 
-- 32 random bytes, base64url, scoped to exactly one payment or subscription.
+- 32 bytes, base64url, scoped to exactly one payment or subscription: `HMAC-SHA256(CHECKOUT_TOKEN_KEY, "rp.checkout.v1:{payment|subscription}:{id}")`. Indistinguishable from random without the key, and reproducible, so an idempotent replay of `POST /v1/payments` returns the original `checkout_url` although only the hash is stored (changed in S6; the API role cannot update payment rows, so a fresh random token could not be re-issued).
 - Only its SHA-256 hash is stored. Lookup is by hash.
 - Valid until the payment reaches a final state or 24 hours after creation, whichever is first.
 - `Referrer-Policy: no-referrer` and log redaction of the `/c/*` path prevent token leakage.
@@ -723,16 +725,18 @@ If a wallet module requires a CSP relaxation, add the narrowest possible excepti
 - Stored in the platform secret store (AWS Secrets Manager), mounted at runtime, never baked into images, never in git, never in plain environment variables visible to other processes where avoidable.
 - Every secret has an owner, a rotation period and a documented rotation procedure in `docs/runbooks/rotation.md`.
 
-| Secret                                 | Holder        | Rotation                     |
-| -------------------------------------- | ------------- | ---------------------------- |
-| API HMAC keys                          | API, main app | 90 days, overlapping         |
-| Webhook Ed25519 private key            | worker        | 90 days, overlapping         |
-| Field-encryption KEK                   | KMS only      | yearly, automatic            |
-| Blind-index key                        | API, worker   | only with full re-index      |
-| Keeper signing key                     | signer only   | 180 days or on any suspicion |
-| FX provider API key (ExchangeRate-API) | API           | yearly or on suspicion       |
-| Supabase role passwords                | per service   | 90 days                      |
-| Upstash REST token                     | API, worker   | 90 days                      |
+| Secret                                 | Holder        | Rotation                              |
+| -------------------------------------- | ------------- | ------------------------------------- |
+| API HMAC keys                          | API, main app | 90 days, overlapping                  |
+| Webhook Ed25519 private key            | worker        | 90 days, overlapping                  |
+| Field-encryption KEK                   | KMS only      | yearly, automatic                     |
+| Blind-index key                        | API, worker   | only with full re-index               |
+| Checkout token key                     | API, checkout | yearly; old tokens expire within 24 h |
+| Field data keys (KMS-wrapped)          | API, worker   | with KEK rotation; re-encrypt job     |
+| Keeper signing key                     | signer only   | 180 days or on any suspicion          |
+| FX provider API key (ExchangeRate-API) | API           | yearly or on suspicion                |
+| Supabase role passwords                | per service   | 90 days                               |
+| Upstash REST token                     | API, worker   | 90 days                               |
 
 ---
 

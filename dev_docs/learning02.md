@@ -143,3 +143,41 @@ Read in order: this section → hand-off summary at the bottom of `learning01.md
 - Exposure caps already in `@rp/config` (`limits.*`); enforce in API.
 - Upstash nonce store must fail **closed**; rate limit store fails **open** with in-process backstop (context §8).
 - Reuse: `@rp/security/hmac-auth` (`verifyRequest` needs `claimNonce` + `findKey`), `@rp/db` repositories (`insertPayment` idempotent), `@rp/core` money/memo/ids, `@rp/stellar/sep7`.
+
+### 2026-10-16 · S5 · release · milestone
+
+`v0.5.0` merged and tagged (PR #8, all 8 checks green)
+
+- Tag push first failed: the pre-push hook runs `pnpm verify` on the _working tree_, and an unformatted WIP file (`fill-env.mjs`) failed `prettier --check`. Format before pushing tags.
+
+### 2026-10-16 · S6 · build · decision
+
+Packages export compiled `dist` for Node; tests use `@rp/source`
+
+- What: exports are `{ "@rp/source": src/*.ts, types: dist/*.d.ts, default: dist/*.js }`; `customConditions` in tsconfig and `resolve.conditions` in vitest pick the source.
+- Why: Node 24's type stripping is still experimental and cannot follow `.js` specifiers to `.ts`; production must run `tsc --build` output.
+- Surprise: a plain `source` condition broke tests — `eventsource` publishes `source` → raw TS from node_modules ("Stripping types is currently unsupported for files under node_modules"). Scoped name fixed it.
+
+### 2026-10-16 · S6 · api · decision
+
+Checkout tokens derived; no Redis idempotency cache
+
+- Token = `HMAC(CHECKOUT_TOKEN_KEY, "rp.checkout.v1:{kind}:{id}")`: replays return the original `checkout_url` although only the hash is stored and `rp_api` cannot update payments. Context §11.2 updated.
+- Idempotency is Postgres-only (one indexed query); caching responses in Redis would put live checkout URLs in Upstash. Context §8.2 updated.
+- HMAC runs on raw body bytes before JSON parsing; rate limit per key only after auth (else anyone could burn a victim key's quota); nonce store fails closed (503); limiter fails open to a 30/min in-process backstop.
+
+### 2026-10-16 · S6 · db · bug
+
+Canceling an `incomplete` subscription violated the schema CHECK
+
+- What: 500 on cancel: "violates check constraint subscriptions_check".
+- Why: §7.1 required on-chain ids for every status but `incomplete`; a merchant may cancel before the user ever subscribed.
+- Fix: migration `0003` → `status IN ('incomplete','canceled') OR (ids present)`; context §7.1 updated; dev DB migrated via `pnpm db:setup`.
+
+### 2026-10-16 · S6 · config · bug
+
+`KEY=` in `.env` failed validation instead of meaning "unset"
+
+- What: API refused to boot: "RP_STELLAR_RPC_URL: Invalid URL" with the line present but empty.
+- Fix: `withoutEmpty()` drops empty/blank values before Zod in both config loaders; test added.
+- Verified: compiled API (`node --env-file=.env apps/api/dist/main.js`) against real Upstash, ExchangeRate-API and dev Postgres: ready 200; GHS 100 → 8.58 USDC at the live rate 11.6646; subscription created; unknown id 404. `pnpm api:call` is the signing reference for the main app.
