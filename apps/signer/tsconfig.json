@@ -4,5 +4,19 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../../packages/core"
+    },
+    {
+      "path": "../../packages/config"
+    },
+    {
+      "path": "../../packages/security"
+    },
+    {
+      "path": "../../packages/stellar"
+    }
+  ]
 }
