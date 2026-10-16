@@ -678,7 +678,7 @@ X-RP-Signature: <base64url>
   "expires_at": "2026-10-16T12:20:00.000Z",
   "confirmed_at": null,
   "created_at": "2026-10-16T12:00:00.000Z",
-  "checkout_url": "https://pay.rodiumai.example/c/Vq1oZ3Jm2c8yYk3G9wQ0l2a4tF6bN8xR1pS5uW7eH0c"
+  "checkout_url": "https://stelpay.forge.rodiumai.io/c/Vq1oZ3Jm2c8yYk3G9wQ0l2a4tF6bN8xR1pS5uW7eH0c"
 }
 ```
 
@@ -771,7 +771,7 @@ Example body:
   "next_charge_at": null,
   "canceled_at": null,
   "created_at": "2026-10-16T12:00:00.000Z",
-  "checkout_url": "https://pay.rodiumai.example/c/Ab3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1eF3hJ5kL7nP9r"
+  "checkout_url": "https://stelpay.forge.rodiumai.io/c/Ab3dE5gH7jK9mN1pQ3sT5vW7yZ9bC1eF3hJ5kL7nP9r"
 }
 ```
 

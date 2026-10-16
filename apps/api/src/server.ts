@@ -9,6 +9,7 @@ import Fastify, { LogController, type FastifyInstance, type FastifyRequest } fro
 import type { ApiDeps } from './deps.js';
 import { ApiError, errorBody } from './errors.js';
 import { registerCheckoutRoutes, type CheckoutDeps } from './checkout/routes.js';
+import { registerDocsRoutes, type DocsSite } from './docs/routes.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerPaymentRoutes } from './routes/payments.js';
 import { registerSubscriptionRoutes } from './routes/subscriptions.js';
@@ -29,7 +30,11 @@ const header = (req: FastifyRequest, name: string): string | undefined => {
   return typeof value === 'string' ? value : undefined;
 };
 
-export function buildServer(deps: ApiDeps, checkout?: CheckoutDeps): FastifyInstance {
+export function buildServer(
+  deps: ApiDeps,
+  checkout?: CheckoutDeps,
+  docs?: DocsSite,
+): FastifyInstance {
   const app = Fastify({
     loggerInstance: deps.logger,
     bodyLimit: BODY_LIMIT_BYTES,
@@ -146,5 +151,6 @@ export function buildServer(deps: ApiDeps, checkout?: CheckoutDeps): FastifyInst
   registerPaymentRoutes(app, deps);
   registerSubscriptionRoutes(app, deps);
   if (checkout !== undefined) registerCheckoutRoutes(app, deps, checkout);
+  if (docs !== undefined) registerDocsRoutes(app, docs);
   return app;
 }

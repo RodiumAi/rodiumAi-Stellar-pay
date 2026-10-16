@@ -17,6 +17,7 @@ import type { FxProvider } from '../src/fx.js';
 import { createMemoryKv } from '../src/kv.js';
 import type { RateLimiter } from '../src/rate-limit.js';
 import type { CheckoutDeps } from '../src/checkout/routes.js';
+import type { DocsSite } from '../src/docs/routes.js';
 import { buildServer } from '../src/server.js';
 import { db } from '../../../packages/db/test/fixtures.js';
 
@@ -92,6 +93,7 @@ export async function harness(
   overrides: Partial<ApiConfig> = {},
   app: AppConfig = appConfig,
   checkout?: CheckoutDeps,
+  docs?: DocsSite,
 ): Promise<Harness> {
   const kms = createLocalDevKms(randomBytes(32), randomBytes);
   const { stored } = await createDataKey(kms, randomBytes);
@@ -140,7 +142,7 @@ export async function harness(
       ledger: () => Promise.resolve(true),
     },
   };
-  return { server: buildServer(deps, checkout), deps, kv, logs, limiter, fxState, health };
+  return { server: buildServer(deps, checkout, docs), deps, kv, logs, limiter, fxState, health };
 }
 
 export interface SignOptions {
