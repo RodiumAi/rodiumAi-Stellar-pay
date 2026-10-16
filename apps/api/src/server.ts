@@ -4,6 +4,7 @@ import { instant } from '@rp/core/time';
 import { uuidV7 } from '@rp/core/uuid-v7';
 import { verifyRequest } from '@rp/security/hmac-auth';
 import { redactCheckoutPath } from '@rp/security/logger';
+import { SpanStatusCode, startServerSpan, type Span } from '@rp/telemetry/tracing';
 import Fastify, { LogController, type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { ApiDeps } from './deps.js';
 import { ApiError, errorBody } from './errors.js';
@@ -19,6 +20,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     rawBody: Buffer;
     apiKeyId: string | null;
+    span: Span | null;
   }
 }
 
@@ -43,8 +45,10 @@ export function buildServer(deps: ApiDeps, checkout?: CheckoutDeps): FastifyInst
 
   // Decorators may not default to a shared object; each request gets its own empty body.
   app.decorateRequest('rawBody', null as unknown as Buffer);
+  app.decorateRequest('span', null);
   app.addHook('onRequest', (req, _reply, done) => {
     req.rawBody = Buffer.alloc(0);
+    req.span = startServerSpan('http.request', req.headers, { 'http.request.method': req.method });
     done();
   });
   app.decorateRequest('apiKeyId', null);
@@ -60,6 +64,12 @@ export function buildServer(deps: ApiDeps, checkout?: CheckoutDeps): FastifyInst
   });
 
   app.addHook('onResponse', (req, reply, done) => {
+    // Route templates only (`/c/:token`), so span names never carry tokens.
+    const route = req.routeOptions.url ?? 'unmatched';
+    req.span?.updateName(`${req.method} ${route}`);
+    req.span?.setAttributes({ 'http.route': route, 'http.response.status_code': reply.statusCode });
+    if (reply.statusCode >= 500) req.span?.setStatus({ code: SpanStatusCode.ERROR });
+    req.span?.end();
     req.log.info(
       {
         req: { method: req.method, url: redactCheckoutPath(req.url) },

@@ -5,6 +5,7 @@ import { cryptoRandomBytes } from '@rp/core/random';
 import { createDb, createPool } from '@rp/db/connection';
 import { createLogger } from '@rp/security/logger';
 import { createTlsFiles } from '@rp/security/tls-files';
+import { startTracing } from '@rp/telemetry/tracing';
 import { createHorizonSource } from '@rp/stellar/horizon-source';
 import { verifyNetwork } from '@rp/stellar/network-check';
 import { createRpcSource } from '@rp/stellar/rpc-source';
@@ -42,6 +43,7 @@ async function main(): Promise<void> {
   if (!cfg.ok) fail(cfg.error);
   const { network } = app.value;
   const logger = createLogger({ level: app.value.logLevel, service: 'worker' });
+  const tracing = startTracing({ service: 'rp-worker', env: env.value });
   const metrics = createMetrics();
 
   const server = new rpc.Server(network.rpcUrl, {
@@ -188,7 +190,7 @@ async function main(): Promise<void> {
       logger.info({ drained }, 'scheduler stopped');
       await ingest.release();
       http.close();
-      await Promise.all([pool.end(), sessionPool.end()]);
+      await Promise.all([pool.end(), sessionPool.end(), tracing.shutdown()]);
       process.exit(drained ? 0 : 1);
     });
   };

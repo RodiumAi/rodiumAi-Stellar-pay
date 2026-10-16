@@ -1,0 +1,20 @@
+{
+  "name": "@rp/telemetry",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tracing": {
+      "@rp/source": "./src/tracing.ts",
+      "types": "./dist/tracing.d.ts",
+      "default": "./dist/tracing.js"
+    }
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/core": "2.11.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/sdk-trace-node": "2.11.0"
+  }
+}
