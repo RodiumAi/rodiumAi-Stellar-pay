@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { db, newId, newPayment, newSubscription, pool } from './fixtures.js';
+import { db, newId, newPayment, newSubscription } from './fixtures.js';
 import { appendAudit } from '../src/audit-log.js';
 import { getCursor, saveCursor } from '../src/cursors.js';
-import { tryAcquireLeaderLock } from '../src/leader-lock.js';
+import { releaseLease, tryAcquireLease } from '../src/leader-lease.js';
 import { claimDueEvents, enqueueEvent, markAttemptFailed, markDelivered } from '../src/outbox.js';
 import { recordPaymentReceipt, type ReceiptCandidate } from '../src/payment-receipts.js';
 import {
@@ -328,7 +328,7 @@ describe('subscriptions and charges', () => {
   });
 });
 
-describe('cursors, audit log and leader lock', () => {
+describe('cursors, audit log and leader lease', () => {
   it('upserts ingest cursors', async () => {
     const source = `horizon-${newId()}`;
     expect(await getCursor(worker, source)).toBeUndefined();
@@ -357,22 +357,32 @@ describe('cursors, audit log and leader lock', () => {
     });
   });
 
-  it('lets only one session hold the ingester lock; the second waits until release', async () => {
-    const p = pool('worker', 2);
-    const a = await p.connect();
-    const b = await p.connect();
-    try {
-      const key = 42n;
-      const lockA = await tryAcquireLeaderLock(a, key);
-      expect(lockA).not.toBeNull();
-      expect(await tryAcquireLeaderLock(b, key)).toBeNull();
-      await lockA?.release();
-      const lockB = await tryAcquireLeaderLock(b, key);
-      expect(lockB).not.toBeNull();
-      await lockB?.release();
-    } finally {
-      a.release();
-      b.release();
-    }
+  it('a lease has one holder; others take over only after expiry or release', async () => {
+    const w = db('worker');
+    const name = `lease-${newId()}`;
+    expect(await tryAcquireLease(w, name, 'a', 30)).toBe(true);
+    expect(await tryAcquireLease(w, name, 'b', 30)).toBe(false);
+    expect(await tryAcquireLease(w, name, 'a', 30)).toBe(true); // renewal
+    await releaseLease(w, name, 'b'); // not b's to release
+    expect(await tryAcquireLease(w, name, 'b', 30)).toBe(false);
+    await releaseLease(w, name, 'a');
+    expect(await tryAcquireLease(w, name, 'b', 1)).toBe(true);
+    // An expired lease (crashed leader) can be taken over.
+    await db('owner')
+      .updateTable('leader_leases')
+      .set({ expires_at: new Date(Date.now() - 1000) })
+      .where('name', '=', name)
+      .execute();
+    expect(await tryAcquireLease(w, name, 'c', 30)).toBe(true);
+    expect(await tryAcquireLease(w, name, 'b', 30)).toBe(false);
+  });
+
+  it('concurrent acquisitions of a free lease give exactly one holder', async () => {
+    const w = db('worker', 10);
+    const name = `lease-${newId()}`;
+    const results = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => tryAcquireLease(w, name, `h${String(i)}`, 30)),
+    );
+    expect(results.filter(Boolean)).toHaveLength(1);
   });
 });

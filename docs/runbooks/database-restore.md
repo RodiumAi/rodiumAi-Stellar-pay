@@ -54,7 +54,7 @@ below are the manual equivalent for a real recovery.
 4. Restore as `postgres` (owners and grants in the dump refer to the roles from step 2):
    `pg_restore --dbname "<target url>" --schema=pay --clean --if-exists --exit-on-error pay.dump`.
 5. Apply any newer migrations as `rp_owner` (`pay.schema_migrations` shows what the dump has).
-6. Update `DATABASE_URL_API`, `DATABASE_URL_WORKER`, `DATABASE_URL_WORKER_SESSION` in Secrets
+6. Update `DATABASE_URL_API` and `DATABASE_URL_WORKER` in Secrets
    Manager (`rodium-pay/api/…`, `rodium-pay/worker/…`), allow the new host in the egress network
    policy, restart, then run the checks.
 

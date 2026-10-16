@@ -113,12 +113,12 @@ the environment (it needs a fresh rate). The `rp:fx:usd` cache bridges the resta
 
 ## Supabase role passwords — `DATABASE_URL_*` entries — 90 days
 
-| Role          | Where the password lives                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| `rp_api`      | `rodium-pay/api/DATABASE_URL_API`                                                           |
-| `rp_worker`   | `rodium-pay/worker/DATABASE_URL_WORKER` and `rodium-pay/worker/DATABASE_URL_WORKER_SESSION` |
-| `rp_owner`    | the migration pipeline's secret (not defined in `infra/k8s`)                                |
-| `rp_readonly` | the support team's secret store                                                             |
+| Role          | Where the password lives                                     |
+| ------------- | ------------------------------------------------------------ |
+| `rp_api`      | `rodium-pay/api/DATABASE_URL_API`                            |
+| `rp_worker`   | `rodium-pay/worker/DATABASE_URL_WORKER`                      |
+| `rp_owner`    | the migration pipeline's secret (not defined in `infra/k8s`) |
+| `rp_readonly` | the support team's secret store                              |
 
 One role at a time, in a quiet window (Postgres has one password per role, so there is no overlap):
 

@@ -1,4 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
+import { hostname } from 'node:os';
 import { loadConfig } from '@rp/config/app-config';
 import { resolveSecretFiles } from '@rp/config/secret-files';
 import { cryptoRandomBytes } from '@rp/core/random';
@@ -58,11 +60,6 @@ async function main(): Promise<void> {
     max: 5,
     applicationName: 'rp-worker',
   });
-  const sessionPool = createPool({
-    connectionString: cfg.value.sessionDatabaseUrl,
-    max: 1,
-    applicationName: 'rp-worker-leader',
-  });
   const db = createDb(pool);
   const rules = {
     merchant: network.merchant,
@@ -82,7 +79,8 @@ async function main(): Promise<void> {
 
   const ingest = createIngestJob({
     db,
-    sessionPool,
+    // Unique per replica: pod name (HOSTNAME in Kubernetes) + pid + random suffix.
+    holder: `${hostname()}:${String(process.pid)}:${randomBytes(4).toString('hex')}`,
     source,
     rules,
     startLedger: cfg.value.ingestStartLedger,
@@ -190,7 +188,7 @@ async function main(): Promise<void> {
       logger.info({ drained }, 'scheduler stopped');
       await ingest.release();
       http.close();
-      await Promise.all([pool.end(), sessionPool.end(), tracing.shutdown()]);
+      await Promise.all([pool.end(), tracing.shutdown()]);
       process.exit(drained ? 0 : 1);
     });
   };

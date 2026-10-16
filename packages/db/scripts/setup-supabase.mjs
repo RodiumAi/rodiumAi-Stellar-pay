@@ -81,7 +81,7 @@ const tryConnect = async (c) => {
 
 // 1. Admin connection: TLS verified against the pinned CA, Postgres major must match local.
 // Prefer the session pooler (5432); bootstrap and migrations are transaction-safe, so the
-// transaction pooler (6543) works too if session mode is unavailable for the project.
+// transaction pooler (6543) works too: the project's session mode was unusable in S11.
 const adminPassword = decodeURIComponent(admin.password);
 let setupPort = 5432;
 let a = client('postgres', adminPassword, 5432);
@@ -106,26 +106,34 @@ await a.end();
 console.log(`✓ roles rp_owner, rp_api, rp_worker, rp_readonly ${rotate ? 'rotated' : 'ready'}`);
 
 // 3. Migrations as rp_owner (transaction-scoped locks: safe on either pooler).
-const o = client('rp_owner', passwords.owner, setupPort);
-const ownerError = await tryConnect(o);
-if (ownerError !== null) fail(`cannot connect as rp_owner (${ownerError})`);
+// Re-setting a password changes its SCRAM salt; Supavisor's cached credentials catch up
+// within seconds, so retry authentication failures (28P01) for up to a minute.
+const connectRetrying = async (make, label) => {
+  for (let attempt = 1; ; attempt++) {
+    const c = make();
+    const error = await tryConnect(c);
+    if (error === null) return c;
+    if (error !== '28P01' || attempt === 12) fail(`cannot connect as ${label} (${error})`);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+};
+const o = await connectRetrying(() => client('rp_owner', passwords.owner, setupPort), 'rp_owner');
 const result = await migrate(o, 'packages/db/migrations');
 await o.end();
 console.log(
   `✓ migrations applied: ${result.applied.join(', ') || 'none'}; already applied: ${result.skipped.length}`,
 );
 
-// 4. URLs: transaction pooler (6543) for request work, session pooler (5432) for the
-// worker's leader lock and for migrations. verify-full + the pinned CA everywhere.
+// 4. URLs: transaction pooler (6543) for the services; the owner URL uses the port that
+// worked for setup. verify-full + the pinned CA everywhere.
 const url = (user, password, port) =>
   `postgresql://${user}.${ref}:${encodeURIComponent(password)}@${host}:${port}/postgres` +
   `?sslmode=verify-full&sslrootcert=${encodeURIComponent(caPath)}`;
 const urls = {
   DATABASE_URL_API: url('rp_api', passwords.api, 6543),
   DATABASE_URL_WORKER: url('rp_worker', passwords.worker, 6543),
-  DATABASE_URL_WORKER_SESSION: url('rp_worker', passwords.worker, 5432),
   DATABASE_URL_READONLY: url('rp_readonly', passwords.readonly, 6543),
-  DATABASE_URL_OWNER: url('rp_owner', passwords.owner, 5432),
+  DATABASE_URL_OWNER: url('rp_owner', passwords.owner, setupPort),
 };
 const values = { ...urls, ...Object.fromEntries(names.map((n) => [key(n), passwords[n]])) };
 
@@ -148,33 +156,18 @@ writeFileSync('.env', lines.join('\n').replace(/\n*$/, '\n'), { mode: 0o600 });
 console.log(`✓ .env updated (previous version saved as ${backup}, mode 600)`);
 
 // 5. Each service role connects through its pooler and sees the schema.
-let sessionBroken = sessionError !== null;
 for (const [name, role] of [
   ['DATABASE_URL_API', 'rp_api'],
   ['DATABASE_URL_WORKER', 'rp_worker'],
-  ['DATABASE_URL_WORKER_SESSION', 'rp_worker'],
   ['DATABASE_URL_READONLY', 'rp_readonly'],
 ]) {
-  const c = new pg.Client({ connectionString: urls[name], connectionTimeoutMillis: 10_000 });
-  const error = await tryConnect(c);
-  if (error !== null) {
-    if (name === 'DATABASE_URL_WORKER_SESSION') {
-      sessionBroken = true;
-      console.warn(`! ${name}: session pooler not reachable (${error})`);
-      continue;
-    }
-    fail(`${name}: cannot connect (${error})`);
-  }
+  const c = await connectRetrying(
+    () => new pg.Client({ connectionString: urls[name], connectionTimeoutMillis: 10_000 }),
+    name,
+  );
   const r = await c.query('SELECT current_user AS u, count(*)::int AS n FROM pay.payments');
   await c.end();
   if (r.rows[0].u !== role) fail(`${name} connected as ${r.rows[0].u}, expected ${role}`);
   console.log(`✓ ${name}: connects as ${role}`);
-}
-if (sessionBroken) {
-  console.warn(
-    '! The worker needs session mode (DATABASE_URL_WORKER_SESSION, port 5432) for its ingest\n' +
-      '  leader lock. The API works now; fix session pooling before running the worker against\n' +
-      '  this project (Dashboard → Database → Settings → Connection pooling).',
-  );
 }
 console.log('Done. Next: pnpm build:all && pnpm api:start (it now uses the Supabase project).');

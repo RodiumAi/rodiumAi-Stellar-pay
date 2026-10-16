@@ -162,7 +162,6 @@ describe('loadWorkerConfig', () => {
     .toString();
   const valid = {
     DATABASE_URL_WORKER: 'postgresql://rp_worker:x@localhost/db',
-    DATABASE_URL_WORKER_SESSION: 'postgresql://rp_worker:x@localhost/db',
     WEBHOOK_URL: 'http://localhost:3000/webhooks/crypto',
     WEBHOOK_SIGNING_KEY_ID: 'whk_2026_10',
     WEBHOOK_SIGNING_KEY_PEM: pem.trim().replaceAll('\n', '\\n'),

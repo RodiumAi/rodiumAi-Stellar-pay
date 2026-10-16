@@ -6,7 +6,6 @@ import { z } from 'zod';
 export interface WorkerConfig {
   readonly port: number;
   readonly databaseUrl: string;
-  readonly sessionDatabaseUrl: string;
   readonly webhookUrl: string;
   readonly webhookKeyId: string;
   readonly webhookPrivateKey: KeyObject;
@@ -27,7 +26,6 @@ export interface WorkerConfig {
 const EnvSchema = z.object({
   WORKER_PORT: z.coerce.number().int().min(1).max(65_535).default(9090),
   DATABASE_URL_WORKER: z.string().startsWith('postgres'),
-  DATABASE_URL_WORKER_SESSION: z.string().startsWith('postgres'),
   WEBHOOK_URL: z.url({ protocol: /^https?$/ }),
   WEBHOOK_SIGNING_KEY_ID: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   WEBHOOK_SIGNING_KEY_PEM: z.string().includes('PRIVATE KEY'),
@@ -93,7 +91,6 @@ export function loadWorkerConfig(
     subscriptions,
     port: e.WORKER_PORT,
     databaseUrl: e.DATABASE_URL_WORKER,
-    sessionDatabaseUrl: e.DATABASE_URL_WORKER_SESSION,
     webhookUrl: e.WEBHOOK_URL,
     webhookKeyId: e.WEBHOOK_SIGNING_KEY_ID,
     webhookPrivateKey: key,

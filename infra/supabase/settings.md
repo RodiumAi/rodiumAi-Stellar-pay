@@ -15,7 +15,7 @@ Tick per environment (dev / staging / prod) when the project is created, and re-
 | Region = AWS region of the service                                                         | ☐   | ☐       | ☐    |
 | Pro plan + PITR add-on (prod)                                                              | —   | —       | ☐    |
 | `infra/supabase/bootstrap-roles.sql` applied with 32+ byte passwords from the secret store | ☐   | ☐       | ☐    |
-| Migrations applied by `rp_owner` (direct or session-mode connection)                       | ☐   | ☐       | ☐    |
+| Migrations applied by `rp_owner` (`pnpm db:setup:supabase`; any pooler mode)               | ☐   | ☐       | ☐    |
 
 ## Local development
 

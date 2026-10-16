@@ -63,6 +63,13 @@ export interface SubscriptionsTable {
   updated_at: DefaultNow;
 }
 
+export interface LeaderLeasesTable {
+  name: string;
+  holder: string;
+  expires_at: Date;
+  acquired_at: DefaultNow;
+}
+
 export interface SubscriptionChargesTable {
   id: string;
   subscription_id: string;
@@ -126,6 +133,7 @@ export interface AuditLogTable {
 export interface Database {
   payments: PaymentsTable;
   subscriptions: SubscriptionsTable;
+  leader_leases: LeaderLeasesTable;
   subscription_charges: SubscriptionChargesTable;
   chain_receipts: ChainReceiptsTable;
   outbox_events: OutboxEventsTable;

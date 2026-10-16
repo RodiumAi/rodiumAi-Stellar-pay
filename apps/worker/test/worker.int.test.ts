@@ -187,7 +187,7 @@ describe('ingest pipeline (context §13.4)', () => {
         metrics,
         job: createIngestJob({
           db: worker,
-          sessionPool: pool('worker', 1),
+          holder: `test-${newId()}`,
           source,
           rules,
           startLedger: 1,
@@ -214,7 +214,7 @@ describe('ingest pipeline (context §13.4)', () => {
     const metrics = createMetrics();
     const job = createIngestJob({
       db: worker,
-      sessionPool: pool('worker', 1),
+      holder: `test-${newId()}`,
       source,
       rules,
       startLedger: 1,
@@ -238,7 +238,7 @@ describe('ingest pipeline (context §13.4)', () => {
     const metrics = createMetrics();
     const job = createIngestJob({
       db: worker,
-      sessionPool: pool('worker', 1),
+      holder: `test-${newId()}`,
       source,
       rules,
       startLedger: null,

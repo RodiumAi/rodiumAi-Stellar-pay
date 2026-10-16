@@ -36,7 +36,7 @@ port 9444 (`SIGNER_METRICS_HOST=0.0.0.0` in Kubernetes; only the monitoring name
 `kubectl -n rodium-pay port-forward deployment/rp-signer 9444:9444`.
 
 Database: read with `rp_readonly` (read-only, 60 s statement timeout). Manual writes use `rp_owner`
-over a session-mode (port 5432) or direct connection, because `chain_receipts` and `audit_log` are
+(any pooler mode; wrap the work in one transaction), because `chain_receipts` and `audit_log` are
 append-only for the runtime roles and `rp_worker` sessions are killed after 15 s idle in a
 transaction. Let `psql` prompt for the password so it never lands in shell history:
 

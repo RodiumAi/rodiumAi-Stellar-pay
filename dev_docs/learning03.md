@@ -176,3 +176,11 @@ Cloud Supabase: session pooler resets; migrations needed session mode
 - Why it mattered: the migration runner held a session advisory lock — unsafe through a transaction pooler (lock and unlock can hit different server connections).
 - Fix: migrations take `pg_advisory_xact_lock` per file and re-check `schema_migrations` inside that transaction (concurrency test added); setup falls back to 6543 and warns that the worker's `DATABASE_URL_WORKER_SESSION` (ingest leader lock) still needs session mode.
 - Open: session pooling on project `sovqyegoxvmnqiomlbzq` must be fixed in the dashboard before the worker runs against it. API verified against the cloud project (ready + a payment created).
+
+### 2026-10-16 · S11 · worker · decision
+
+Ingest leader by lease row instead of a session advisory lock
+
+- Why: the project's session pooler (5432) never answers a startup message (even for an unknown user, with or without TLS), while 6543 answers in ~1 s; the direct host is IPv6-only. Advisory locks need a dedicated session.
+- How: migration 0006 `leader_leases`; `tryAcquireLease` is one `INSERT … ON CONFLICT DO UPDATE … WHERE holder = me OR expires_at < now()` using the DB clock; the ingester renews before every page (30 s lease) and releases on shutdown. Matching is idempotent, so a stalled leader overlapping its successor is safe. `DATABASE_URL_WORKER_SESSION` removed everywhere. Verified against the cloud project: leader, lag 0, clean shutdown.
+- Also: re-running bootstrap re-sets passwords (new SCRAM salt) and Supavisor briefly rejects them (`28P01`) — setup retries for up to a minute.
