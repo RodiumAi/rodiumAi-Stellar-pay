@@ -86,7 +86,42 @@ importers:
 
   apps/signer: {}
 
-  apps/worker: {}
+  apps/worker:
+    dependencies:
+      '@rp/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@rp/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@rp/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@rp/security':
+        specifier: workspace:*
+        version: link:../../packages/security
+      '@rp/stellar':
+        specifier: workspace:*
+        version: link:../../packages/stellar
+      '@stellar/stellar-sdk':
+        specifier: 17.2.1
+        version: 17.2.1
+      kysely:
+        specifier: 0.29.6
+        version: 0.29.6
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      pino:
+        specifier: 10.3.1
+        version: 10.3.1
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
 
   packages/config:
     dependencies:
