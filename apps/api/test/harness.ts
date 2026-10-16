@@ -85,7 +85,10 @@ export interface Harness {
   readonly health: { redis: boolean };
 }
 
-export async function harness(overrides: Partial<ApiConfig> = {}): Promise<Harness> {
+export async function harness(
+  overrides: Partial<ApiConfig> = {},
+  app: AppConfig = appConfig,
+): Promise<Harness> {
   const kms = createLocalDevKms(randomBytes(32), randomBytes);
   const { stored } = await createDataKey(kms, randomBytes);
   const keyring = await loadKeyring(kms, [stored], stored.id);
@@ -117,7 +120,7 @@ export async function harness(overrides: Partial<ApiConfig> = {}): Promise<Harne
   };
   const health = { redis: true };
   const deps: ApiDeps = {
-    app: appConfig,
+    app,
     api: apiConfig(overrides),
     db: db('api'),
     kv,
