@@ -13,4 +13,6 @@ regexes = [
   '''abcdef123456''',
   # made-up customer reference used across API tests
   '''usr_19ab-secret-ref''',
+  # placeholder PEM (body "AAA") in packages/config secret-files tests
+  '''-----BEGIN PRIVATE KEY-----\\nAAA\\n-----END PRIVATE KEY-----''',
 ]
