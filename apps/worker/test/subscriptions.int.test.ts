@@ -56,6 +56,8 @@ interface FakeChain extends SorobanClient {
   simulateError: string | null;
   /** What `get(sub_id)` reports on-chain (unix seconds); null → due now. */
   onChainNext: bigint | null;
+  /** What `is_paused()` reports. */
+  paused: boolean;
   sent: number;
   nextChargeAt: bigint;
 }
@@ -64,6 +66,7 @@ function fakeChain(): FakeChain {
   const chain: FakeChain = {
     simulateError: null,
     onChainNext: null,
+    paused: false,
     sent: 0,
     nextChargeAt: 0n,
     getAccount: (address) => Promise.resolve(new Account(address, '1')),
@@ -73,6 +76,17 @@ function fakeChain(): FakeChain {
         op?.type === 'invokeHostFunction' && op.func.type === 'hostFunctionTypeInvokeContract'
           ? op.func.invokeContract.functionName.toString()
           : '';
+      if (fn === 'is_paused') {
+        return Promise.resolve({
+          _parsed: true,
+          id: 'sim',
+          latestLedger: 100,
+          events: [],
+          minResourceFee: '0',
+          transactionData: new SorobanDataBuilder(),
+          result: { auth: [], retval: xdr.ScVal.scvBool(chain.paused) },
+        } as unknown as rpc.Api.SimulateTransactionResponse);
+      }
       if (fn === 'get') {
         const next = chain.onChainNext ?? BigInt(Math.floor(Date.now() / 1000) - 60);
         return Promise.resolve({
@@ -337,6 +351,27 @@ describe('charging (context §15)', () => {
       status: 'active',
       next_charge_at: new Date(Number(chain.onChainNext) * 1000),
     });
+  });
+
+  it('a paused contract defers the charge without counting a failure (kill switch)', async () => {
+    const now = new Date();
+    const sub = await activeSubscription(new Date(now.getTime() - 1000));
+    const chain = fakeChain();
+    chain.paused = true;
+    chain.simulateError = 'HostError: Error(Contract, #3)';
+    await chargeJob(chain, () => now).job.run(never);
+    expect((await charges(sub.id))[0]).toMatchObject({ status: 'failed', failure_code: 'paused' });
+    expect(await findSubscriptionById(worker, sub.id)).toMatchObject({
+      status: 'active',
+      failed_attempts: 0,
+    });
+    expect(chain.sent).toBe(0);
+    // After the pause lifts, the next pass reuses the same attempt and succeeds.
+    chain.paused = false;
+    chain.simulateError = null;
+    await chargeJob(chain, () => new Date(now.getTime() + 11 * 60_000)).job.run(never);
+    expect(await charges(sub.id)).toHaveLength(1);
+    expect((await charges(sub.id))[0]).toMatchObject({ status: 'succeeded' });
   });
 
   it('a token error #10 (insufficient balance) while due is a real failure, not "not due"', async () => {

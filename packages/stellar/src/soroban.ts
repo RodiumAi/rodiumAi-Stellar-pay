@@ -191,14 +191,11 @@ export async function readSubscription(
     readonly networkPassphrase: string;
   },
 ): Promise<OnChainSubscription | null> {
-  const account = await client.getAccount(p.source);
-  const tx = new TransactionBuilder(account, { fee: '100', networkPassphrase: p.networkPassphrase })
-    .addOperation(new Contract(p.contractId).call('get', nativeToScVal(p.subId, { type: 'u64' })))
-    .setTimeout(30)
-    .build();
-  const sim = await client.simulateTransaction(tx);
-  if (!rpc.Api.isSimulationSuccess(sim) || sim.result === undefined) return null;
-  const value: unknown = scValToNative(sim.result.retval);
+  const value = await simulateView(
+    client,
+    p,
+    new Contract(p.contractId).call('get', nativeToScVal(p.subId, { type: 'u64' })),
+  );
   if (typeof value !== 'object' || value === null) return null;
   const v = new Map<string, unknown>(Object.entries(value));
   const next = v.get('next_charge_at');
@@ -207,4 +204,29 @@ export async function readSubscription(
   // `SubStatus` is a unit enum: scValToNative yields ['Active'] / ['Canceled'].
   const active = Array.isArray(status) && status[0] === 'Active';
   return { nextChargeAt: next, active };
+}
+
+/** `is_paused()` via simulation; null when the chain cannot answer. */
+export async function readPaused(
+  client: SorobanClient,
+  p: { readonly contractId: string; readonly source: string; readonly networkPassphrase: string },
+): Promise<boolean | null> {
+  const value = await simulateView(client, p, new Contract(p.contractId).call('is_paused'));
+  return typeof value === 'boolean' ? value : null;
+}
+
+/** Simulates a read-only contract call and returns its native return value. */
+async function simulateView(
+  client: SorobanClient,
+  p: { readonly source: string; readonly networkPassphrase: string },
+  op: xdr.Operation,
+): Promise<unknown> {
+  const account = await client.getAccount(p.source);
+  const tx = new TransactionBuilder(account, { fee: '100', networkPassphrase: p.networkPassphrase })
+    .addOperation(op)
+    .setTimeout(30)
+    .build();
+  const sim = await client.simulateTransaction(tx);
+  if (!rpc.Api.isSimulationSuccess(sim) || sim.result === undefined) return undefined;
+  return scValToNative(sim.result.retval);
 }
