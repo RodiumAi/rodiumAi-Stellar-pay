@@ -1,0 +1,61 @@
+# Non-secret settings; the overlay patches the values per environment.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rp-config
+data:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  RP_STELLAR_NETWORK: testnet
+  RP_STELLAR_RPC_URL: https://soroban-testnet.stellar.org
+  RP_STELLAR_HORIZON_URL: https://horizon-testnet.stellar.org
+  MERCHANT_ADDRESS: G_REPLACE_IN_OVERLAY
+  SUBSCRIPTION_CONTRACT_ID: C_REPLACE_IN_OVERLAY
+  CHECKOUT_BASE_URL: https://pay.example.com
+  RETURN_URL_ORIGINS: https://app.example.com
+  WEBHOOK_URL: https://app.example.com/webhooks/rodium-pay
+  WEBHOOK_SIGNING_KEY_ID: whk_REPLACE
+  UPSTASH_REDIS_REST_URL: https://REPLACE.upstash.io
+  AWS_KMS_KEY_ID: alias/rp-field-kek
+  FIELD_DATA_KEY_CURRENT: REPLACE_HEX_ID
+  KEEPER_ADDRESS: G_REPLACE_IN_OVERLAY
+  SUBSCRIPTION_PLANS: '[]'
+  # Traces (OTLP/HTTP) to the platform's collector; unset disables tracing.
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring.svc:4318
+---
+# The signer gets only what it needs to check transactions — no database or Redis settings.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rp-signer-config
+data:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  RP_STELLAR_NETWORK: testnet
+  MERCHANT_ADDRESS: G_REPLACE_IN_OVERLAY
+  SUBSCRIPTION_CONTRACT_ID: C_REPLACE_IN_OVERLAY
+  # Plain-HTTP metrics port; NetworkPolicy admits only the monitoring namespace.
+  SIGNER_METRICS_HOST: 0.0.0.0
+---
+# IAM roles via IRSA / EKS Pod Identity: only rp-api may call kms:Encrypt/Decrypt on the
+# field KEK; each role may read only its own Secrets Manager entries.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rp-api
+  annotations: { eks.amazonaws.com/role-arn: 'arn:aws:iam::000000000000:role/REPLACE-rp-api' }
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rp-worker
+  annotations: { eks.amazonaws.com/role-arn: 'arn:aws:iam::000000000000:role/REPLACE-rp-worker' }
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rp-signer
+  annotations: { eks.amazonaws.com/role-arn: 'arn:aws:iam::000000000000:role/REPLACE-rp-signer' }
+automountServiceAccountToken: false

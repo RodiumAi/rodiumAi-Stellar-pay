@@ -1,0 +1,85 @@
+# Prometheus alert rules for context §18 (PrometheusRule for the Prometheus Operator).
+# Workers report database-wide counts and gauges identically, so aggregate with max().
+# Every alert names its runbook in docs/runbooks/.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rodium-pay
+  namespace: rodium-pay
+spec:
+  groups:
+    - name: rodium-pay
+      rules:
+        - alert: IngestLag
+          # ~5 s ledgers: 60 ledgers ≈ 5 minutes behind the network.
+          expr: max(ingest_lag_ledgers) > 60
+          for: 5m
+          labels: { severity: page }
+          annotations:
+            summary: Payment ingestion is {{ $value }} ledgers behind
+            runbook: docs/runbooks/ingestion-stuck.md
+        - alert: NoIngestLeader
+          # Lag keeps its last value when no one ingests; a missing leader is the signal.
+          expr: max(ingest_is_leader) < 1
+          for: 5m
+          labels: { severity: page }
+          annotations:
+            summary: No worker holds the ingest lock — payments are not being detected
+            runbook: docs/runbooks/ingestion-stuck.md
+        - alert: UnmatchedReceipt
+          expr: max(receipts_unmatched_open) > 0
+          labels: { severity: ticket }
+          annotations:
+            summary: '{{ $value }} unmatched receipt(s) need manual handling'
+            runbook: docs/runbooks/unmatched-payment.md
+        - alert: SignerRejection
+          expr: increase(signer_rejections_total[10m]) > 0
+          labels: { severity: page }
+          annotations:
+            summary: The keeper signer refused a transaction — possible bug or tampering
+            runbook: docs/runbooks/keeper-compromise.md
+        - alert: WebhookDeadLetters
+          expr: max(webhooks_dead) > 0
+          labels: { severity: ticket }
+          annotations:
+            summary: '{{ $value }} webhook event(s) dead-lettered'
+            runbook: docs/runbooks/README.md
+        - alert: WebhookDeliveryFailing
+          expr: sum(rate(webhook_delivery_failures_total[15m])) > 0 and sum(rate(webhooks_delivered_total[15m])) == 0
+          for: 15m
+          labels: { severity: page }
+          annotations:
+            summary: Webhook deliveries are failing and none succeed
+            runbook: docs/runbooks/README.md
+        - alert: OutboxBacklog
+          expr: max(outbox_pending) > 500
+          for: 15m
+          labels: { severity: ticket }
+          annotations:
+            summary: '{{ $value }} outbox events pending'
+        - alert: KeeperBalanceLow
+          # Matches the worker default KEEPER_MIN_BALANCE_XLM (50).
+          expr: min(keeper_balance_xlm) < 50
+          for: 10m
+          labels: { severity: ticket }
+          annotations:
+            summary: Keeper balance {{ $value }} XLM — top up before charges fail on fees
+            runbook: docs/runbooks/keeper-compromise.md
+        - alert: ChargesFailing
+          expr: sum(increase(charges_failed_total[1h])) > 10 and sum(increase(charges_succeeded_total[1h])) == 0
+          labels: { severity: ticket }
+          annotations:
+            summary: Subscription charges failing with no successes in the last hour
+        - alert: ErrorRateAboveBaseline
+          # Fastify access logs are shipped as logs; use the ingress controller's metrics.
+          expr: sum(rate(nginx_ingress_controller_requests{exported_namespace="rodium-pay",status=~"5.."}[10m])) / sum(rate(nginx_ingress_controller_requests{exported_namespace="rodium-pay"}[10m])) > 0.02
+          for: 10m
+          labels: { severity: page }
+          annotations:
+            summary: API 5xx rate {{ $value | humanizePercentage }}
+        - alert: CertificateExpiresSoon
+          expr: min by (pod) (mtls_cert_not_after_timestamp_seconds) - time() < 14 * 86400
+          labels: { severity: ticket }
+          annotations:
+            summary: mTLS certificate in {{ $labels.pod }} expires within 14 days — renewal or reload stuck
+            runbook: docs/runbooks/rotation.md

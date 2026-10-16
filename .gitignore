@@ -49,3 +49,4 @@ apps/checkout/dist-types/
 
 # dev mTLS material
 .mtls/
+infra/observability/rules.yaml

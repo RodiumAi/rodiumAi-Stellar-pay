@@ -1,0 +1,110 @@
+# Default deny in both directions; every flow below is an explicit exception (context §16.3).
+# Kubernetes NetworkPolicy matches IPs, not host names: the public egress rules below allow
+# HTTPS/Postgres to public addresses only (private ranges and the metadata endpoint are
+# excluded). Pin exact hosts (Supabase pooler, Upstash, Stellar RPC/Horizon, FX provider,
+# main-app webhook URL, KMS) with the FQDN policy in cilium-fqdn.yaml where the CNI supports it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# DNS and the trace collector for api and worker only; the signer resolves nothing.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: platform-egress
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app.kubernetes.io/name, operator: In, values: [rp-api, rp-worker] }
+  policyTypes: [Egress]
+  egress:
+    # OpenTelemetry collector (traces); the signer exports none.
+    - to:
+        - namespaceSelector:
+            matchLabels: { rodium.ai/role: monitoring }
+      ports: [{ protocol: TCP, port: 4318 }]
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rp-api
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: rp-api }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Only the ingress controller (TLS terminator) reaches the API.
+    - from:
+        - namespaceSelector:
+            matchLabels: { rodium.ai/role: ingress }
+      ports: [{ protocol: TCP, port: 8080 }]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 6543 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rp-worker
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: rp-worker }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Metrics scrape only.
+    - from:
+        - namespaceSelector:
+            matchLabels: { rodium.ai/role: monitoring }
+      ports: [{ protocol: TCP, port: 9090 }]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: rp-signer }
+      ports: [{ protocol: TCP, port: 9443 }]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+      ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 6543 }
+---
+# The signer accepts only the worker (and the metrics scraper on its plain metrics port) and
+# talks to nobody: no DNS, no database, no internet.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rp-signer
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: rp-signer }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: rp-worker }
+      ports: [{ protocol: TCP, port: 9443 }]
+    - from:
+        - namespaceSelector:
+            matchLabels: { rodium.ai/role: monitoring }
+      ports: [{ protocol: TCP, port: 9444 }]
+  egress: []
