@@ -35,6 +35,7 @@
     "worker:start": "node --env-file=.env apps/worker/dist/main.js",
     "api:start": "pnpm typecheck && node --env-file=.env apps/api/dist/main.js",
     "db:setup": "node --disable-warning=ExperimentalWarning packages/db/scripts/setup-local.mjs",
+    "db:setup:supabase": "node --disable-warning=ExperimentalWarning packages/db/scripts/setup-supabase.mjs",
     "test:coverage": "vitest run --project unit --coverage",
     "secrets:scan": "gitleaks git --redact --no-banner",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm audit --audit-level high && pnpm secrets:scan && ./scripts/verify-db.sh && ./scripts/verify-contracts.sh"
