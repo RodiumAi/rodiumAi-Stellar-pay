@@ -99,3 +99,47 @@ Quickstart Horizon lags core after start
 - What: "Service Unavailable" then "Not Found" from `loadAccount` right after start, although RPC and friendbot were up.
 - Why: Horizon ingests behind core (history_latest_ledger stayed 0 for a while on the 2 GB VM).
 - Fix: start script waits for `history_latest_ledger ≥ 1`; test retries account loads (90 s). Two consecutive green reruns.
+
+### 2026-10-16 · S5 · release · milestone
+
+Phase A (foundations) complete — S0–S5 tagged `v0.0.1`…`v0.5.0`
+
+- Done: guarded monorepo + CI (verify, db-integration, stellar-integration, contract, contract-fuzz, security-scan, codeql); `core` money/state machines; `config` + `security` primitives; `db` schema/roles/repositories; Soroban contract with free-tool review; `stellar` sources, guards, SEP-7, subscribe builder.
+- Tests: 301 unit, 43 DB integration, 3 Stellar integration, 22 contract (+ proptest, fuzz).
+
+---
+
+## ▶ RESUME HERE (for a fresh session)
+
+Read in order: this section → hand-off summary at the bottom of `learning01.md` → `dev_docs/BUILD_PLAN.md` (Sprint 6 section) → `docs/context.md` (§8 Redis, §9 API, §6 Quote, §12 secrets).
+
+**Next step: Sprint 6 — `apps/api` (`/v1` internal API).** Branch `sprint/06-api` from `main` after PR #8 merges and `v0.5.0` is tagged.
+
+**How to work (user preferences):**
+
+- Solo dev; working continuously; sprint ends at exit tag, not a date.
+- Claude opens PRs, waits for green CI, then **rebase-merges and tags** itself (user said "you go ahead"). Branch protection is org-managed — out of scope.
+- Every sprint: tests green locally → `pnpm verify` (pre-push hook) → PR → CI green → merge → annotated tag `v0.N.0` → learning-log entries. Never commit to `main` directly.
+- Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; PR bodies end with the Claude Code line.
+- Explain to the user in plain language; user wanted step-by-step help with `.env`.
+
+**Environment facts (this Mac):**
+
+- Use Node 24.21.0: `export PATH=$HOME/.nvm/versions/node/v24.21.0/bin:$PATH` (shell default is Node 22; `engine-strict` fails otherwise, incl. the pre-push hook on `git push`).
+- macOS Command Line Tools broken (no C++ headers): anything compiling C++ fails locally (stellar-cli from source, libFuzzer). Use prebuilt binaries/CI.
+- Docker via Colima (2 CPU / 2 GB): `colima start` if `docker info` fails. After deleting images run `colima ssh -- sudo fstrim -a` to return space. **Disk is tight (~8–10 GB free)** — check `df -h /System/Volumes/Data` before big pulls/builds.
+- Local Postgres: `pnpm db:start` (Postgres only) → `pnpm db:setup` (dev DB `rodium_pay_dev`, fills `DATABASE_URL_*`) → `pnpm test:int`.
+- Local Stellar: `pnpm stellar:start` / `pnpm test:stellar` / `pnpm stellar:stop` (Quickstart image 2.3 GB; remove when done).
+- Contract: `cd contracts && cargo test && stellar contract build`; Scout via `scripts/verify-contracts.sh` (`FORCE_CONTRACTS=1`). stellar-cli 28.1.0 prebuilt in `~/.cargo/bin`.
+- `stellar-cli` reads the repo `.env` → never name our vars `STELLAR_*` (ours are `RP_STELLAR_*`).
+
+**`.env` status:** complete for local dev except `SUBSCRIPTION_CONTRACT_ID` (filled at S8 testnet deploy) and real Supabase URLs (S10). User's ExchangeRate-API key and Upstash REST URL/token are set and verified (test without printing values). `.env` is chmod 600; never print or commit secrets. Testnet merchant key lives in stellar-cli keystore as `rp_testnet_merchant` (funded).
+
+**Sprint 6 starting notes:**
+
+- Deps to install (≥ 14 days old; re-check with `npm view <pkg> time`): fastify 5.12.x, @fastify/helmet, @fastify/rate-limit, @upstash/redis 1.39.0, @upstash/ratelimit 2.2.0 (see `docs/dependencies.md`).
+- Runtime TS loading: packages export `.ts` sources; apps will need a build/run strategy (Node 24 type stripping can't follow `.js` import specifiers to `.ts` files — `tsc --build` output or a bundler is needed). Decide early in S6.
+- FX: ExchangeRate-API `GET https://v6.exchangerate-api.com/v6/{key}/latest/USD`; cache in Upstash for the update period; refuse non-USD when stale; config `FX_MAX_RATE_AGE_SECONDS`, `FX_SUPPORTED_FIAT`.
+- Exposure caps already in `@rp/config` (`limits.*`); enforce in API.
+- Upstash nonce store must fail **closed**; rate limit store fails **open** with in-process backstop (context §8).
+- Reuse: `@rp/security/hmac-auth` (`verifyRequest` needs `claimNonce` + `findKey`), `@rp/db` repositories (`insertPayment` idempotent), `@rp/core` money/memo/ids, `@rp/stellar/sep7`.
