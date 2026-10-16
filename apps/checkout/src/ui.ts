@@ -19,6 +19,10 @@ const STATUS_TEXT: Readonly<Record<string, string>> = {
   expired: 'This payment request has expired',
   late_paid: 'Payment received after expiry — our team will review it',
   refunded: 'Payment refunded',
+  incomplete: 'Waiting for your signature',
+  active: 'Subscription active',
+  past_due: 'Subscription payment overdue',
+  canceled: 'Subscription canceled',
 };
 
 export function statusText(status: string): string {

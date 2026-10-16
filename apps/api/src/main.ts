@@ -6,6 +6,7 @@ import { createLocalDevKms, type Kms } from '@rp/security/kms';
 import { createLogger } from '@rp/security/logger';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { rpc } from '@stellar/stellar-sdk';
 import { sql } from 'kysely';
 import { fileURLToPath } from 'node:url';
 import { loadApiConfig } from './api-config.js';
@@ -91,7 +92,10 @@ async function main(): Promise<void> {
   const assetsDir =
     process.env['CHECKOUT_ASSETS_DIR'] ??
     fileURLToPath(new URL('../../checkout/dist', import.meta.url));
-  const checkout = { assets: loadCheckoutAssets(assetsDir), horizonFetch: fetch };
+  const soroban = new rpc.Server(app.value.network.rpcUrl, {
+    allowHttp: app.value.network.rpcUrl.startsWith('http://'),
+  });
+  const checkout = { assets: loadCheckoutAssets(assetsDir), horizonFetch: fetch, soroban };
 
   const server = buildServer(
     {

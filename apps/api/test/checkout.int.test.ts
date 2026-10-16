@@ -60,6 +60,16 @@ const checkout: CheckoutDeps = {
     ]),
   },
   horizonFetch,
+  // Payment tests never reach Soroban; subscription checkout has its own tests.
+  soroban: {
+    getAccount: () => Promise.reject(new Error('unused')),
+    getLatestLedger: () => Promise.reject(new Error('unused')),
+    getLedgerEntries: () => Promise.reject(new Error('unused')),
+    prepareTransaction: () => Promise.reject(new Error('unused')),
+    simulateTransaction: () => Promise.reject(new Error('unused')),
+    sendTransaction: () => Promise.reject(new Error('unused')),
+    getTransaction: () => Promise.reject(new Error('unused')),
+  },
 };
 
 let h: Harness;

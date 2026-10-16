@@ -44,5 +44,7 @@ export async function payWithFreighter(data: CheckoutData): Promise<string> {
   });
   if (signed.error !== undefined) throw new Error('Signing was cancelled');
   await postJson(data.submitUrl, { xdr: signed.signedTxXdr });
-  return 'Payment sent — waiting for confirmation';
+  return data.kind === 'subscription'
+    ? 'Subscription submitted — confirming'
+    : 'Payment sent — waiting for confirmation';
 }
