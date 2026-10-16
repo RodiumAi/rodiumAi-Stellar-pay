@@ -75,11 +75,22 @@ const EnvSchema = z
     }
   });
 
+/** `KEY=` in an env file means "not set", so optional settings fall back to defaults. */
+export function withoutEmpty(
+  env: Readonly<Record<string, string | undefined>>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).filter(
+      (e): e is [string, string] => e[1] !== undefined && e[1].trim() !== '',
+    ),
+  );
+}
+
 /** Parses configuration once at boot. Callers exit the process on error (fail fast). */
 export function loadConfig(
   env: Readonly<Record<string, string | undefined>>,
 ): Result<AppConfig, ConfigError> {
-  const parsed = EnvSchema.safeParse(env);
+  const parsed = EnvSchema.safeParse(withoutEmpty(env));
   if (!parsed.success) {
     return err({
       code: 'invalid_config',
