@@ -305,7 +305,8 @@ export function signedHeaders(
   'ts',
 )}
 <div class="callout note"><p><strong>Full client.</strong> The complete Node.js client with retries and typed responses is in <a href="/docs/authentication">Authentication</a>.</p></div></li>
-<li><h2 id="create-a-payment">Create a payment</h2>
+<li><h2 id="create-a-payment">Create (initiate) a payment</h2>
+<p>This is the call that <strong>initiates a payment</strong> (a transaction): your backend sends <code>POST /v1/payments</code>. Full field list in <a href="/docs/api-reference#post-v1-payments-create-initiate-a-one-time-payment">Endpoints</a>.</p>
 <p>Amounts are in the fiat currency's minor units. StelPay converts to USDC at the live rate and returns a hosted checkout link.</p>
 ${tabs('create', [
   {
@@ -456,7 +457,7 @@ for (const id of [
     id,
     label: {
       'sign-requests': 'Sign your requests',
-      'create-a-payment': 'Create a payment',
+      'create-a-payment': 'Create (initiate) a payment',
       'redirect-to-checkout': 'Send the user to checkout',
       'handle-the-webhook': 'Handle the webhook',
     }[id],

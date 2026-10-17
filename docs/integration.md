@@ -638,7 +638,7 @@ All responses are JSON. All errors have the shape `{"error":{"code":"<code>","me
 
 There is **no** endpoint to list or search payments, cancel a one-time payment, refund, change a subscription plan, or re-approve a subscription allowance (see §13).
 
-### 5.1 `POST /v1/payments`: create a one-time payment
+### 5.1 `POST /v1/payments`: create (initiate) a one-time payment
 
 Request body (`apps/api/src/routes/payments.ts`):
 
@@ -735,7 +735,7 @@ Payment statuses (`packages/core/src/payment.ts`):
 
 Transitions: `pending → underpaid → confirmed`, `pending → confirmed`, `pending|underpaid → expired`, `pending|underpaid|expired → late_paid` (money after `expires_at`), `confirmed → refunded`. Extra money after `confirmed` stays `confirmed`; the excess is recorded for refund review.
 
-### 5.3 `POST /v1/subscriptions`: create a subscription
+### 5.3 `POST /v1/subscriptions`: create (initiate) a subscription
 
 Request body (`apps/api/src/routes/subscriptions.ts`):
 
