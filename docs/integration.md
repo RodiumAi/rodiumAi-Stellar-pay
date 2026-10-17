@@ -1,6 +1,6 @@
 # StelPay: Integration Guide for the Main App
 
-This guide is for the developer who connects the main RodiumAi app (NestJS backend + Next.js frontend) to the crypto payment service in this repo. You do not need to read the rest of the repo. Everything here is taken from the code; file references are given so you can check them.
+This guide is for the developer who connects an app (its backend and web frontend) to the crypto payment service in this repo. You do not need to read the rest of the repo. Everything here is taken from the code; file references are given so you can check them.
 
 If you already integrated MoMo, the shape is the same: create a payment on the server, send the user to a hosted page, wait for a signed callback, then grant access. Crypto is just one more provider adapter.
 
@@ -43,8 +43,8 @@ The main app never touches wallets, keys or blockchain code. It does three thing
 sequenceDiagram
     autonumber
     actor U as User (browser)
-    participant FE as Main app frontend (Next.js)
-    participant BE as Main app backend (NestJS)
+    participant FE as Main app frontend
+    participant BE as Main app backend
     participant API as Crypto Pay API (/v1)
     participant CO as Hosted checkout (/c/{token})
     participant W as Wallet (Freighter / mobile)
@@ -221,7 +221,7 @@ The reason is only in the service's logs, never in the response.
 
 Note the order inside the server: the body is parsed (size and content type) **before** authentication. So a wrong `Content-Type` gives `415` and a body over 16 KB gives `413` even if the signature is wrong.
 
-### 3.4 TypeScript client for NestJS (node:crypto only)
+### 3.4 TypeScript client (Node.js, node:crypto only)
 
 Drop this into your backend, e.g. `src/payments/crypto/rodium-pay.client.ts`. It needs Node 18+ (global `fetch`). It signs, retries safely and keeps the same body bytes and Idempotency-Key across retries.
 
@@ -509,7 +509,7 @@ export interface SubscriptionWithCheckout extends Subscription {
 }
 ```
 
-Register it as a NestJS provider:
+Example: register it as a provider (NestJS shown; any Node.js framework works the same):
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -915,7 +915,7 @@ The exact bytes sent and signed (`webhookBody`):
 - Tolerance: reject if `|now - t| > 300` seconds (both past and future).
 - `k` selects the public key. During rotation you will hold two keys (old and new) for about a day.
 
-### 7.4 NestJS receiver (complete)
+### 7.4 Example receiver (complete, NestJS)
 
 Enable raw bodies in `main.ts` so you verify the exact bytes (re-serialized JSON will not verify):
 
@@ -1419,7 +1419,7 @@ These run inside this repo with its `.env` (they need the service's own secrets)
 
 Credentials and config
 
-- [ ] Production API key id + secret in the main app's secret store (not in env files in git, not in Next.js `NEXT_PUBLIC_*`).
+- [ ] Production API key id + secret in the main app's secret store (not in env files in git, not in any browser-exposed variable).
 - [ ] Production webhook public key(s) + key id configured; verifier accepts a map of keys (for rotation).
 - [ ] Main app servers on NTP (both HMAC and webhooks reject > 300 s skew).
 - [ ] Production `RETURN_URL_ORIGINS`, `WEBHOOK_URL` (https, no redirects), `FX_SUPPORTED_FIAT`, plan codes and caps confirmed with ops.

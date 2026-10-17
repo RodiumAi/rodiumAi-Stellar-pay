@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- One paragraph. Link the sprint (dev_docs/BUILD_PLAN.md) and any learning-log entry. -->
+<!-- One paragraph: what changes and why. -->
 
 ## Definition of done (docs/context.md §21)
 
@@ -15,7 +15,6 @@
 ## Sprint gate
 
 - [ ] `pnpm verify` green locally
-- [ ] Learning log updated (`dev_docs/learningNN.md`)
 - [ ] §17 facts verified, sources listed below
 
 ## Self-review (solo developer — required before merge)
