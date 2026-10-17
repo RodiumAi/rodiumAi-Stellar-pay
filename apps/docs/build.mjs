@@ -304,7 +304,7 @@ export function signedHeaders(
 }`,
   'ts',
 )}
-<div class="callout note"><p><strong>Full client.</strong> The complete NestJS client with retries and typed responses is in <a href="/docs/authentication">Authentication</a>.</p></div></li>
+<div class="callout note"><p><strong>Full client.</strong> The complete Node.js client with retries and typed responses is in <a href="/docs/authentication">Authentication</a>.</p></div></li>
 <li><h2 id="create-a-payment">Create a payment</h2>
 <p>Amounts are in the fiat currency's minor units. StelPay converts to USDC at the live rate and returns a hosted checkout link.</p>
 ${tabs('create', [
@@ -359,7 +359,7 @@ export function verifyWebhook(rawBody: Buffer, header: string, publicKeyPem: str
 }`,
   'ts',
 )}
-<div class="callout tip"><p><strong>Exact format.</strong> The precise signed payload, a test vector and the full NestJS receiver are in <a href="/docs/webhooks">Webhooks</a>. Copy those rather than this sketch.</p></div></li>
+<div class="callout tip"><p><strong>Exact format.</strong> The precise signed payload, a test vector and the full example receiver are in <a href="/docs/webhooks">Webhooks</a>. Copy those rather than this sketch.</p></div></li>
 </ol>
 <div class="next-cards">
 <a class="card" href="/docs/how-it-works"><strong>How it works</strong><span>Sequence of a payment and a subscription</span></a>

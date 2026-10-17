@@ -60,3 +60,11 @@ RodiumAi-Brand-Guidelines.md
 # RodiumAi brand kit (source files; the docs site copies what it needs into apps/docs/src/brand)
 /0[1-7]-*/
 RodiumAi-Brand-Guidelines.pdf
+
+# Private handoff notes (internal stack and AWS details): never published
+/docs/handoff/
+# Internal notes, deploy records and tooling: kept locally, not published
+/dev_docs/
+/docs/deploy/
+/scripts/deploy/
+/.claude/

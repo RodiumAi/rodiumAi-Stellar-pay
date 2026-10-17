@@ -35,7 +35,6 @@ RodiumAI app ──HMAC API──▶ API ──▶ Supabase Postgres / Upstash R
 | `packages/telemetry`     | OpenTelemetry tracing helpers                                                      |
 | `contracts/subscription` | Soroban subscription contract (Rust)                                               |
 | `infra/`                 | Docker images, Kubernetes manifests, alert rules, Supabase/Upstash checklists      |
-| `dev_docs/`              | Build plan and learning logs                                                       |
 
 ## Requirements
 
@@ -123,8 +122,8 @@ under `/run/secrets`) and the CA file must be mounted at the path in `sslrootcer
 - **Images:** `infra/docker/Dockerfile` (`--target api|worker|signer`) — distroless, non-root,
   read-only filesystem, no shell. `.github/workflows/images.yml` publishes them to GHCR from `main`
   (and weekly), signed with cosign, with SBOM and SLSA provenance.
-- **AWS (ECR + ECS):** step-by-step for the platform team in
-  [`docs/deploy/aws-handover.md`](deploy/aws-handover.md).
+- **AWS (ECR + ECS):** images are pushed to Amazon ECR from `main` and deployed to ECS by the
+  maintainers.
 - **Kubernetes (alternative):** `infra/k8s/base` + `overlays/staging` — restricted Pod Security, default-deny
   network policies (the signer is reachable only from the worker and has no egress), secrets via
   the Secrets Store CSI driver, IRSA for AWS KMS. Admission policy in `infra/k8s/policies`.
