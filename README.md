@@ -96,6 +96,7 @@ Tests: `pnpm verify` (lint, types, 360+ unit tests, secret scan, DB and contract
 - [`docs/development.md`](docs/development.md) — local setup, Supabase cloud setup, every command, deployment
 - [`docs/integration.md`](docs/integration.md) — integrating an app: auth, endpoints, checkout, webhooks
 - [`docs/context.md`](docs/context.md) — full specification and design decisions
+- [`docs/deploy/staging.md`](docs/deploy/staging.md) — the live testnet deployment: what exists, cost, deploy, remove
 - [`docs/deploy/aws-handover.md`](docs/deploy/aws-handover.md) — AWS deployment (ECR + ECS)
 - [`docs/runbooks/`](docs/runbooks/README.md) — operations: kill switch, key rotation, restores
 - [`docs/security/`](docs/security/README.md) — contract security review and security records
