@@ -6,7 +6,7 @@ export function newNonce(): string {
   return randomBytes(16).toString('base64');
 }
 
-/** Exactly the §11.3 header set; applied to every /c/* response. */
+/** The §11.3 header set (plus `font-src 'self'` for the self-hosted brand font); applied to every /c/* response. */
 export function checkoutHeaders(nonce: string | null): Record<string, string> {
   const scriptSrc = nonce === null ? "'none'" : `'nonce-${nonce}' 'strict-dynamic'`;
   return {
@@ -15,6 +15,7 @@ export function checkoutHeaders(nonce: string | null): Record<string, string> {
       `script-src ${scriptSrc}`,
       "style-src 'self'",
       "img-src 'self' data:",
+      "font-src 'self'",
       "connect-src 'self'",
       "form-action 'none'",
       "frame-ancestors 'none'",

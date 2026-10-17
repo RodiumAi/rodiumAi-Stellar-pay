@@ -112,8 +112,8 @@ describe('subscription checkout (context §11.1)', () => {
     const res = await h.server.inject({ method: 'GET', url: `/c/${token}` });
     expect(res.statusCode).toBe(200);
     const doc = new JSDOM(res.body).window.document;
-    expect(doc.querySelector('.amount')?.textContent).toBe('9.9900000 USDC every 30 days');
-    expect(doc.body.textContent).toContain('Up to 3 future charges of 9.9900000 USDC');
+    expect(doc.querySelector('.amount')?.textContent).toBe('9.99 USDC every 30 days');
+    expect(doc.body.textContent).toContain('Up to 3 future charges of 9.99 USDC');
     expect(doc.body.textContent).toContain(contractId);
     expect(doc.getElementById('pay-freighter')?.textContent).toBe('Subscribe with Freighter');
     expect(res.headers['content-security-policy']).toContain("'nonce-");

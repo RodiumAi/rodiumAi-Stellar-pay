@@ -8,6 +8,7 @@ const dir = new URL('../apps/checkout/dist/', import.meta.url);
 const manifest = JSON.parse(readFileSync(new URL('.vite/manifest.json', dir), 'utf8'));
 let failed = false;
 for (const chunk of Object.values(manifest)) {
+  if (!chunk.file.endsWith('.js')) continue; // fonts and logos referenced by the CSS
   const size = gzipSync(readFileSync(new URL(chunk.file, dir))).length;
   const initial = chunk.isEntry === true;
   console.log(

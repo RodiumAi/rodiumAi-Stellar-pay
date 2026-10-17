@@ -38,7 +38,12 @@ const TX_FEE_STROOPS = '1000';
 type Manifest = Readonly<
   Record<
     string,
-    { readonly file: string; readonly css?: readonly string[]; readonly isEntry?: boolean }
+    {
+      readonly file: string;
+      readonly css?: readonly string[];
+      readonly assets?: readonly string[];
+      readonly isEntry?: boolean;
+    }
   >
 >;
 
@@ -54,7 +59,7 @@ export function loadCheckoutAssets(dir: string): {
   const entries = Object.values(manifest);
   const entry = entries.find((e) => e.isEntry === true);
   if (entry === undefined) throw new Error('checkout manifest has no entry');
-  const names = new Set(entries.flatMap((e) => [e.file, ...(e.css ?? [])]));
+  const names = new Set(entries.flatMap((e) => [e.file, ...(e.css ?? []), ...(e.assets ?? [])]));
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- names come from the manifest
   const files = new Map([...names].map((name) => [name, readFileSync(join(dir, name))] as const));
   return {
@@ -65,6 +70,14 @@ export function loadCheckoutAssets(dir: string): {
     files,
   };
 }
+
+/** Content types for the checkout's hashed files (the brand font and logo come with the CSS). */
+const ASSET_TYPES: ReadonlyMap<string, string> = new Map([
+  ['js', 'text/javascript; charset=utf-8'],
+  ['css', 'text/css; charset=utf-8'],
+  ['woff', 'font/woff'],
+  ['svg', 'image/svg+xml'],
+]);
 
 const Token = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) });
 const PrepareBody = z.object({ address: z.string() });
@@ -344,12 +357,11 @@ export function registerCheckoutRoutes(
     scope.get('/c/assets/:file', (req, reply) => {
       const { file } = req.params as { file: string };
       const content = checkout.assets.files.get(file);
-      if (content === undefined) throw new ApiError('not_found', 'Not found');
+      const type = ASSET_TYPES.get(file.split('.').pop() ?? '');
+      if (content === undefined || type === undefined) throw new ApiError('not_found', 'Not found');
       // Hashed names: safe to cache; still same-origin only (§11.3 CORP).
       void reply.header('cache-control', 'public, max-age=31536000, immutable');
-      return reply
-        .type(file.endsWith('.css') ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8')
-        .send(content);
+      return reply.type(type).send(content);
     });
 
     done();

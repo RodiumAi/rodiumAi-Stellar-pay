@@ -20,7 +20,16 @@ import { z } from 'zod';
 import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
 import { parseBody } from '../request.js';
-import { escapeHtml, jsonForScript, type PageAssets } from './page.js';
+import {
+  checkoutFooter,
+  checkoutHeader,
+  displayAmount,
+  escapeHtml,
+  fact,
+  jsonForScript,
+  pageHead,
+  type PageAssets,
+} from './page.js';
 
 const SUBMITTED_TTL_SECONDS = 86_400;
 const TX_TIMEOUT_SECONDS = 300;
@@ -48,38 +57,41 @@ export function renderSubscriptionPage(m: {
   readonly networkName: string;
   readonly data: unknown;
 }): string {
-  const styles = m.assets.styles
-    .map((href) => `<link rel="stylesheet" href="${escapeHtml(href)}">`)
-    .join('');
   const every = intervalText(m.intervalSeconds);
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="referrer" content="no-referrer">
-<title>Subscribe — ${escapeHtml(m.price)} USDC ${escapeHtml(every)} — RodiumAI</title>
-${styles}
-</head>
+  const price = displayAmount(m.price);
+  const plan = m.planCode.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+  return `${pageHead(`Subscribe: ${price} USDC ${every} · StelPay by RodiumAi`, m.assets)}
 <body>
+${checkoutHeader(m.networkName)}
 <main>
-<section class="card" aria-labelledby="title">
-<h1 id="title">Subscribe to ${escapeHtml(m.planCode)}</h1>
-<p class="amount" aria-label="Price">${escapeHtml(m.price)} USDC ${escapeHtml(every)}</p>
-<dl>
-<dt>Network</dt><dd>${escapeHtml(m.networkName)}</dd>
-<dt>First charge</dt><dd>${escapeHtml(m.price)} USDC today</dd>
-<dt>You approve</dt><dd>Up to ${String(m.periods)} future charges of ${escapeHtml(m.price)} USDC</dd>
-<dt>Contract</dt><dd>${escapeHtml(m.contractId)}</dd>
+<section class="checkout" aria-labelledby="title">
+<div class="pane details">
+<span class="tag">Subscription</span>
+<h1 id="title">Subscribe to ${escapeHtml(plan)}</h1>
+<p class="amount" aria-label="Price">${escapeHtml(price)} <span>USDC ${escapeHtml(every)}</span></p>
+<p class="status-pill"><span class="status-dot" id="status-dot" data-status="incomplete"></span><span id="status" role="status" aria-live="polite">Waiting for your signature</span></p>
+<dl class="facts">
+${fact('Plan', m.planCode)}
+${fact('Network', m.networkName, undefined, false)}
+${fact('First charge', `${price} USDC today`, undefined, false)}
+${fact('You approve', `Up to ${String(m.periods)} future charges of ${price} USDC`, undefined, false)}
+${fact('Contract', m.contractId, 'contract')}
 </dl>
-<p class="hint">One signature pays the first period and approves the future charges. You can cancel anytime, or revoke the approval in your wallet.</p>
-<div class="actions">
-<button type="button" id="pay-freighter">Subscribe with Freighter</button>
 </div>
-<p id="wallet-message" class="hint" role="status" aria-live="polite"></p>
-<p id="status" class="status" role="status" aria-live="polite">Waiting for your signature</p>
+<div class="pane pay">
+<ol class="how">
+<li><strong>One signature</strong><span>pays the first period and approves the future charges.</span></li>
+<li><strong>Capped by the contract</strong><span>it can never charge early, twice, or more than ${escapeHtml(price)} USDC.</span></li>
+<li><strong>Cancel anytime</strong><span>or revoke the approval in your wallet.</span></li>
+</ol>
+<div class="actions">
+<button type="button" class="btn primary" id="pay-freighter">Subscribe with Freighter</button>
+</div>
+<p id="wallet-message" class="hint center" role="status" aria-live="polite"></p>
 <p class="visually-hidden" id="received"></p>
+</div>
 </section>
+${checkoutFooter()}
 </main>
 <script type="application/json" id="rp-checkout">${jsonForScript(m.data)}</script>
 <script type="module" nonce="${escapeHtml(m.nonce)}" src="${escapeHtml(m.assets.script)}"></script>

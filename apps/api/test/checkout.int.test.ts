@@ -119,7 +119,7 @@ describe('GET /c/:token', () => {
     )?.[1];
     expect(nonce).toBeDefined();
     const doc = new JSDOM(res.body).window.document;
-    expect(doc.querySelector('.amount')?.textContent).toBe('19.9900000 USDC');
+    expect(doc.querySelector('.amount')?.textContent).toBe('19.99 USDC');
     const text = doc.body.textContent;
     expect(text).toContain(merchant);
     expect(text).toContain(TESTNET.usdc.issuer);
@@ -133,7 +133,7 @@ describe('GET /c/:token', () => {
     ).toHaveLength(0);
     expect(res.body).not.toMatch(/\sstyle=|\son[a-z]+=|javascript:/i);
     expect(doc.querySelector('svg.qr')).not.toBeNull();
-    expect(doc.querySelector('a.button')?.getAttribute('href')).toMatch(
+    expect(doc.querySelector('a.btn')?.getAttribute('href')).toMatch(
       /^web\+stellar:pay\?destination=/,
     );
   });
