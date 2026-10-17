@@ -497,7 +497,7 @@ function layout(p) {
     ? `<main id="content" class="landing">${p.html}</main>`
     : `<main id="content" class="doc"><article><p class="breadcrumb">${esc(p.group)}</p><h1>${esc(p.title)}</h1>${p.html}
 <footer class="doc-foot"><div class="pager">${prev ? `<a class="prev" href="/docs/${prev.slug}"><span>Previous</span>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="/docs/${next.slug}"><span>Next</span>${esc(next.title)}</a>` : ''}</div>
-<p class="edit"><a href="${REPO}/blob/main/${p.slug === 'quickstart' ? 'apps/docs/build.mjs' : 'docs/integration.md'}" rel="noopener" target="_blank">Edit this page on GitHub ↗</a></p></footer></article>${toc}</main>`;
+</footer></article>${toc}</main>`;
   return `<!doctype html>
 <html lang="en">
 <head>
