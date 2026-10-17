@@ -106,9 +106,7 @@
     });
   }
 
-  // Search ("/" or Ctrl/⌘-K to focus)
-  var input = document.querySelector('.search input');
-  var box = document.querySelector('.search .results');
+  // Search ("/" or Ctrl/⌘-K to focus); the sidebar and content-top boxes share one index
   var script = document.querySelector('script[data-search]');
   var index = null;
   function load() {
@@ -122,7 +120,7 @@
         return j;
       });
   }
-  function render(q) {
+  function render(box, q) {
     while (box.firstChild) box.removeChild(box.firstChild);
     var terms = q.toLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) {
@@ -164,11 +162,16 @@
     });
     box.hidden = false;
   }
-  if (input && box) {
+  var inputs = [];
+  document.querySelectorAll('.search').forEach(function (wrap) {
+    var input = wrap.querySelector('input');
+    var box = wrap.querySelector('.results');
+    if (!input || !box) return;
+    inputs.push(input);
     input.addEventListener('focus', load);
     input.addEventListener('input', function () {
       load().then(function () {
-        render(input.value);
+        render(box, input.value);
       });
     });
     input.addEventListener('keydown', function (e) {
@@ -192,15 +195,23 @@
         input.blur();
       }
     });
+  });
+  if (inputs.length) {
     document.addEventListener('keydown', function (e) {
       var typing = /input|textarea/i.test(document.activeElement.tagName);
       if ((e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) {
         e.preventDefault();
-        input.focus();
+        // the first box that is visible (the sidebar one is off-screen on mobile)
+        var target = inputs.filter(function (i) {
+          return i.getBoundingClientRect().left >= 0 && i.offsetParent;
+        })[0];
+        (target || inputs[0]).focus();
       }
     });
     document.addEventListener('click', function (e) {
-      if (!e.target.closest('.search')) box.hidden = true;
+      document.querySelectorAll('.search .results').forEach(function (box) {
+        if (!box.parentNode.contains(e.target)) box.hidden = true;
+      });
     });
   }
 })();

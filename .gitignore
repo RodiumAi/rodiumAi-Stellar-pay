@@ -54,3 +54,9 @@ infra/observability/rules.yaml
 
 # Supabase CA certificate and local Supabase files
 .supabase/
+
+# Internal brand guidelines (kept out of the public repo)
+RodiumAi-Brand-Guidelines.md
+# RodiumAi brand kit (source files; the docs site copies what it needs into apps/docs/src/brand)
+/0[1-7]-*/
+RodiumAi-Brand-Guidelines.pdf

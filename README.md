@@ -1,9 +1,9 @@
-# StelPay — USDC payments and subscriptions on Stellar
+# StelPay: USDC payments and subscriptions on Stellar
 
 **StelPay lets an app accept stablecoin payments the way it accepts mobile money.** Built for
-RodiumAI, an education platform in Ghana whose users pay with MoMo, StelPay adds **USDC on
-Stellar** as a second payment provider: one-time payments for courses and **recurring
-subscriptions enforced by a Soroban smart contract** — without the main app ever touching a
+RodiumAi (the AI infrastructure platform for Africa, whose users already pay with Mobile Money),
+StelPay adds **USDC on Stellar** as a second payment provider: one-time payments for credits and
+plans, and **recurring subscriptions enforced by a Soroban smart contract**, without the main app ever touching a
 wallet, a key or a blockchain library.
 
 > **Live on testnet:** `https://stelpay.forge.rodiumai.io` ·
@@ -33,13 +33,13 @@ wallet, a key or a blockchain library.
                  └── Signer (isolated, mTLS) ── keeper key, signs only valid charges
 ```
 
-**One-time payment** — the main app asks for a 50 GHS payment → StelPay converts to USDC at the
+**One-time payment:** the main app asks for a 50 GHS payment → StelPay converts to USDC at the
 live rate and returns a checkout link → the user pays from Freighter or any SEP-7 mobile wallet
 (LOBSTR, xBull…) → the worker sees the payment on Stellar, matches it by memo (handles
 underpayment and top-ups) → a signed `payment.confirmed` webhook tells the main app to unlock
 access.
 
-**Subscription** — the user signs one `subscribe` transaction: it pays the first period and
+**Subscription:** the user signs one `subscribe` transaction: it pays the first period and
 approves a capped number of future charges. Each period the worker asks the isolated **signer**
 to sign a `charge`; the **contract** checks every rule on-chain and moves the funds. Failed
 charges retry (+1, +3, +5 days) then cancel; cancelling from the wallet is picked up from
@@ -64,7 +64,7 @@ contract events.
   refuses anything but one `charge` on our contract from the keeper account.
 - **Envelope encryption** of personal data with an AWS KMS key; blind index for lookups.
 - Contract invariants covered by unit tests, a **model-based property test** of every invariant,
-  **cargo-fuzz** (1 h clean run) and **Scout** static analysis — see
+  **cargo-fuzz** (1 h clean run) and **Scout** static analysis; see
   [`docs/security/contract-review.md`](docs/security/contract-review.md).
 - Signed container images (cosign), SBOM and SLSA provenance; Trivy, CodeQL, OSV and Semgrep in
   CI.
@@ -93,17 +93,17 @@ Tests: `pnpm verify` (lint, types, 360+ unit tests, secret scan, DB and contract
 
 ## Docs
 
-- [`docs/development.md`](docs/development.md) — local setup, Supabase cloud setup, every command, deployment
-- [`docs/integration.md`](docs/integration.md) — integrating an app: auth, endpoints, checkout, webhooks
-- [`docs/context.md`](docs/context.md) — full specification and design decisions
-- [`docs/deploy/staging.md`](docs/deploy/staging.md) — the live testnet deployment: what exists, cost, deploy, remove
-- [`docs/deploy/aws-handover.md`](docs/deploy/aws-handover.md) — AWS deployment (ECR + ECS)
-- [`docs/runbooks/`](docs/runbooks/README.md) — operations: kill switch, key rotation, restores
-- [`docs/security/`](docs/security/README.md) — contract security review and security records
+- [`docs/development.md`](docs/development.md): local setup, Supabase cloud setup, every command, deployment
+- [`docs/integration.md`](docs/integration.md): integrating an app: auth, endpoints, checkout, webhooks
+- [`docs/context.md`](docs/context.md): full specification and design decisions
+- [`docs/deploy/staging.md`](docs/deploy/staging.md): the live testnet deployment: what exists, cost, deploy, remove
+- [`docs/deploy/aws-handover.md`](docs/deploy/aws-handover.md): AWS deployment (ECR + ECS)
+- [`docs/runbooks/`](docs/runbooks/README.md): operations: kill switch, key rotation, restores
+- [`docs/security/`](docs/security/README.md): contract security review and security records
 
 ## Status
 
 Running on **Stellar testnet** as a beta. Mainnet requires the contract sign-off in
 `docs/security/contract-review.md`, multisig admin and merchant accounts and legal review.
 
-Built by **Joshua Agyemang** ([@Joshua-OA](https://github.com/Joshua-OA)) for RodiumAI.
+Built by **Joshua Agyemang** ([@Joshua-OA](https://github.com/Joshua-OA)) for RodiumAi.

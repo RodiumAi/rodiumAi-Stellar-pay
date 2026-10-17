@@ -6,13 +6,21 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 export interface DocsSite {
   readonly pages: ReadonlyMap<string, Buffer>;
   readonly assets: ReadonlyMap<string, Buffer>;
+  /** Plain-text files at the site root: the whole guide as Markdown, and llms.txt. */
+  readonly text: ReadonlyMap<string, Buffer>;
 }
+
+const TEXT_FILES: Readonly<Record<string, string>> = {
+  'stelpay-docs.md': 'text/markdown; charset=utf-8',
+  'llms.txt': 'text/plain; charset=utf-8',
+};
 
 const TYPES: Readonly<Record<string, string>> = {
   css: 'text/css; charset=utf-8',
   js: 'text/javascript; charset=utf-8',
   json: 'application/json; charset=utf-8',
   svg: 'image/svg+xml',
+  woff: 'font/woff',
 };
 
 function walk(dir: string): string[] {
@@ -25,6 +33,7 @@ function walk(dir: string): string[] {
 export function loadDocsSite(dir: string): DocsSite {
   const pages = new Map<string, Buffer>();
   const assets = new Map<string, Buffer>();
+  const text = new Map<string, Buffer>();
   for (const file of walk(dir)) {
     const rel = relative(dir, file).split('\\').join('/');
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- files listed from the build directory
@@ -32,9 +41,10 @@ export function loadDocsSite(dir: string): DocsSite {
     if (rel === 'index.html') pages.set('', body);
     else if (rel.startsWith('docs/') && rel.endsWith('.html')) pages.set(rel.slice(5, -5), body);
     else if (rel.startsWith('assets/')) assets.set(rel.slice(7), body);
+    else if (Object.hasOwn(TEXT_FILES, rel)) text.set(rel, body);
   }
   if (!pages.has('')) throw new Error(`docs site in ${dir} has no index.html`);
-  return { pages, assets };
+  return { pages, assets, text };
 }
 
 /** Static pages only: scripts and styles from our origin, no inline code, no framing. */
@@ -45,6 +55,7 @@ function docsHeaders(reply: FastifyReply, cache: string): FastifyReply {
       "script-src 'self'",
       "style-src 'self'",
       "img-src 'self' data:",
+      "font-src 'self'",
       "connect-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'none'",
@@ -61,7 +72,7 @@ function docsHeaders(reply: FastifyReply, cache: string): FastifyReply {
   });
 }
 
-/** `/` landing page, `/docs/<page>` and content-hashed `/docs-assets/<file>`. */
+/** `/` landing page, `/docs/<page>`, `/stelpay-docs.md`, `/llms.txt` and content-hashed `/docs-assets/<file>`. */
 export function registerDocsRoutes(app: FastifyInstance, site: DocsSite): void {
   const notFound = (reply: FastifyReply): FastifyReply => {
     reply.callNotFound();
@@ -73,6 +84,13 @@ export function registerDocsRoutes(app: FastifyInstance, site: DocsSite): void {
     return docsHeaders(reply, 'public, max-age=300').type('text/html; charset=utf-8').send(body);
   };
   app.get('/', (_req, reply) => page('', reply));
+  for (const [name, type] of Object.entries(TEXT_FILES)) {
+    app.get(`/${name}`, (_req, reply) => {
+      const body = site.text.get(name);
+      if (body === undefined) return notFound(reply);
+      return docsHeaders(reply, 'public, max-age=300').type(type).send(body);
+    });
+  }
   app.get('/docs', (_req, reply) => reply.redirect('/docs/quickstart', 302));
   app.get<{ Params: { slug: string } }>('/docs/:slug', (req, reply) =>
     /^[a-z0-9-]{1,64}$/.test(req.params.slug) ? page(req.params.slug, reply) : notFound(reply),

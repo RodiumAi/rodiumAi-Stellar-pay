@@ -1,6 +1,6 @@
-# RodiumAI Crypto Pay — Integration Guide for the Main App
+# StelPay: Integration Guide for the Main App
 
-This guide is for the developer who connects the main RodiumAI app (NestJS backend + Next.js frontend) to the crypto payment service in this repo. You do not need to read the rest of the repo. Everything here is taken from the code; file references are given so you can check them.
+This guide is for the developer who connects the main RodiumAi app (NestJS backend + Next.js frontend) to the crypto payment service in this repo. You do not need to read the rest of the repo. Everything here is taken from the code; file references are given so you can check them.
 
 If you already integrated MoMo, the shape is the same: create a payment on the server, send the user to a hosted page, wait for a signed callback, then grant access. Crypto is just one more provider adapter.
 
@@ -26,7 +26,7 @@ If you already integrated MoMo, the shape is the same: create a payment on the s
 
 ## 1. Overview
 
-The service lets RodiumAI take **USDC on the Stellar network** for:
+The service lets RodiumAi take **USDC on the Stellar network** for:
 
 - **One-time payments.** You ask for a fiat amount (for example 19.99 USD). The service converts it to USDC, locks that quote for a short time (default 20 minutes), and gives you a checkout link. The user pays from their own wallet. When the money arrives on-chain, you get a `payment.confirmed` webhook.
 - **Subscriptions.** You ask for a plan by code (for example `pro_monthly`). The user signs once in their wallet. That signature pays the first period and approves a limited number of future charges. The service charges each period automatically and tells you with webhooks (`subscription.activated`, `subscription.renewed`, `subscription.past_due`, `subscription.canceled`).
@@ -140,7 +140,7 @@ Get these through your secret store. **Never paste secrets in chat, tickets, or 
 
 | Item                            | Format                                                 | Where it comes from (service side)                                                                                        |
 | ------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| API key id                      | `ak_[a-z0-9_]{1,32}`, e.g. `ak_2026_10`                | One entry of `API_HMAC_KEYS` (`id:secret,id:secret`, at most 2) — `apps/api/src/api-config.ts`                            |
+| API key id                      | `ak_[a-z0-9_]{1,32}`, e.g. `ak_2026_10`                | One entry of `API_HMAC_KEYS` (`id:secret,id:secret`, at most 2), see `apps/api/src/api-config.ts`                         |
 | API key secret (**secret**)     | base64url (no padding), decodes to at least 32 bytes   | Same entry of `API_HMAC_KEYS`                                                                                             |
 | Webhook public key(s)           | Ed25519 public key, PEM (`-----BEGIN PUBLIC KEY-----`) | `openssl pkey -in whk.pem -pubout` from the worker's `WEBHOOK_SIGNING_KEY_PEM` (`docs/runbooks/rotation.md`). Not secret. |
 | Webhook key id                  | `[A-Za-z0-9_-]{1,64}`, convention `whk_<yyyy_mm>`      | Worker setting `WEBHOOK_SIGNING_KEY_ID`                                                                                   |
@@ -229,7 +229,7 @@ Drop this into your backend, e.g. `src/payments/crypto/rodium-pay.client.ts`. It
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 
 export interface RodiumPayConfig {
-  /** e.g. https://rp-api.internal.example — no trailing slash needed */
+  /** e.g. https://rp-api.internal.example, no trailing slash needed */
   readonly baseUrl: string;
   readonly keyId: string;
   /** base64url secret from the secret store */
@@ -629,16 +629,16 @@ All responses are JSON. All errors have the shape `{"error":{"code":"<code>","me
 | Method | Path                            | Auth | Idempotency-Key |
 | ------ | ------------------------------- | ---- | --------------- |
 | POST   | `/v1/payments`                  | HMAC | required        |
-| GET    | `/v1/payments/{id}`             | HMAC | —               |
+| GET    | `/v1/payments/{id}`             | HMAC | not used        |
 | POST   | `/v1/subscriptions`             | HMAC | required        |
-| GET    | `/v1/subscriptions/{id}`        | HMAC | —               |
+| GET    | `/v1/subscriptions/{id}`        | HMAC | not used        |
 | POST   | `/v1/subscriptions/{id}/cancel` | HMAC | not checked     |
-| GET    | `/v1/health/ready`              | none | —               |
-| GET    | `/health/live`                  | none | —               |
+| GET    | `/v1/health/ready`              | none | not used        |
+| GET    | `/health/live`                  | none | not used        |
 
 There is **no** endpoint to list or search payments, cancel a one-time payment, refund, change a subscription plan, or re-approve a subscription allowance (see §13).
 
-### 5.1 `POST /v1/payments` — create a one-time payment
+### 5.1 `POST /v1/payments`: create a one-time payment
 
 Request body (`apps/api/src/routes/payments.ts`):
 
@@ -662,7 +662,7 @@ X-RP-Timestamp: 1760616000
 X-RP-Nonce: 3q2-7wAAAAAAAAAAAAAAAA
 X-RP-Signature: <base64url>
 
-{"merchant_order_id":"ord_8f2c","customer_ref":"usr_19ab","description":"RodiumAI Pro credits","amount":{"currency":"USD","value_minor":1999},"return_url":"https://app.rodiumai.example/billing/return?order=ord_8f2c"}
+{"merchant_order_id":"ord_8f2c","customer_ref":"usr_19ab","description":"RodiumAi Pro credits","amount":{"currency":"USD","value_minor":1999},"return_url":"https://app.rodiumai.example/billing/return?order=ord_8f2c"}
 ```
 
 `201 Created` (`200 OK` + `idempotent-replayed: true` on replay):
@@ -702,7 +702,7 @@ Errors:
 | 503    | `service_unavailable`      | Nonce store (Redis) down                                                                                                 |
 | 500    | `internal_error`           | Unexpected                                                                                                               |
 
-### 5.2 `GET /v1/payments/{id}` — read a payment
+### 5.2 `GET /v1/payments/{id}`: read a payment
 
 `{id}` must be a UUID; anything else (or unknown id) → `404 payment_not_found`.
 
@@ -729,13 +729,13 @@ Payment statuses (`packages/core/src/payment.ts`):
 | `pending`   | Waiting for money                                                               | no     | no            |
 | `underpaid` | Some money arrived, less than due; user can top up until `expires_at`           | no     | no            |
 | `confirmed` | Received ≥ due before `expires_at`                                              | yes    | **yes**       |
-| `expired`   | `expires_at` passed without full payment (may have partial money — refund case) | yes    | no            |
+| `expired`   | `expires_at` passed without full payment (may have partial money; refund case)  | yes    | no            |
 | `late_paid` | Money arrived at or after `expires_at`. Manual review by ops (refund or honour) | yes    | no (manual)   |
 | `refunded`  | A confirmed payment was refunded manually by ops                                | yes    | revoke        |
 
 Transitions: `pending → underpaid → confirmed`, `pending → confirmed`, `pending|underpaid → expired`, `pending|underpaid|expired → late_paid` (money after `expires_at`), `confirmed → refunded`. Extra money after `confirmed` stays `confirmed`; the excess is recorded for refund review.
 
-### 5.3 `POST /v1/subscriptions` — create a subscription
+### 5.3 `POST /v1/subscriptions`: create a subscription
 
 Request body (`apps/api/src/routes/subscriptions.ts`):
 
@@ -840,7 +840,7 @@ Source: `apps/api/src/checkout/routes.ts`, `apps/api/src/checkout/subscription-c
 One-time payment (`GET /c/{token}` while `pending`/`underpaid`):
 
 - Description, the **remaining** USDC amount, asset and issuer, destination address, the memo (format `RP` + 12 characters), expiry time, a QR code / `web+stellar:pay` link for mobile wallets, and a "Pay with Freighter" button.
-- If `underpaid`: "Partially paid — send the remaining amount".
+- If `underpaid`: "Partially paid, send the remaining amount".
 - Once the payment is final the page itself returns 404; the status endpoint still answers.
 
 Subscription (`GET /c/{token}` while `incomplete`):
@@ -849,7 +849,7 @@ Subscription (`GET /c/{token}` while `incomplete`):
 
 ### 6.3 Return to your app
 
-The page polls `GET /c/{token}/status` (every 3 s, backing off ×1.5 up to 15 s, with ETag). When `final` is true it does `window.location.assign(return_url)` — **your `return_url` exactly as you sent it, with nothing added.** So put your own reference in it, e.g. `https://app.rodiumai.example/billing/return?order=ord_8f2c`. Only the origin is checked against `RETURN_URL_ORIGINS`; path and query are yours.
+The page polls `GET /c/{token}/status` (every 3 s, backing off ×1.5 up to 15 s, with ETag). When `final` is true it does `window.location.assign(return_url)`: **your `return_url` exactly as you sent it, with nothing added.** So put your own reference in it, e.g. `https://app.rodiumai.example/billing/return?order=ord_8f2c`. Only the origin is checked against `RETURN_URL_ORIGINS`; path and query are yours.
 
 `final` is true for payments in `confirmed`, `expired`, `late_paid`, `refunded`, and for subscriptions in any status other than `incomplete`. The user is redirected after **expiry too**, so your return page must check the real status.
 
@@ -862,7 +862,7 @@ The redirect proves nothing: anyone can open your `return_url`. Your return page
 1. Ask your backend for the order status.
 2. The backend answers from its own database (set by the webhook).
 3. If still unpaid, the backend calls `GET /v1/payments/{id}` (signed, server to server) and grants only if that says `confirmed` (§8.2).
-4. Show "Payment received" / "Waiting for confirmation" / "Payment expired — try again".
+4. Show "Payment received" / "Waiting for confirmation" / "Payment expired, try again".
 
 The browser-facing `/c/{token}/status` endpoint is for the checkout page only. Do not use it from your backend to grant access: use the signed `/v1` API.
 
@@ -1154,7 +1154,7 @@ Emitted by: `packages/db/src/payment-receipts.ts` (confirmed, underpaid, late_pa
 | Type                              | When                                                                                                                              | `data` fields                                                                                                                                                      | What the main app should do                                                                                                                                        |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `payment.confirmed`               | Total received ≥ amount due, before `expires_at`                                                                                  | `payment_id`, `merchant_order_id`, `asset`, `amount_due`, `amount_received`, `tx_hashes[]`                                                                         | **Grant** the purchase (idempotently). Mark order paid. If `amount_received > amount_due`, the excess is held for refund review by ops; nothing for you to do.     |
-| `payment.underpaid`               | First partial payment (sent once, on the change from `pending`)                                                                   | same                                                                                                                                                               | Do not grant. Optionally show "partially paid, send the rest" — the checkout link still works until `expires_at`.                                                  |
+| `payment.underpaid`               | First partial payment (sent once, on the change from `pending`)                                                                   | same                                                                                                                                                               | Do not grant. Optionally show "partially paid, send the rest"; the checkout link still works until `expires_at`.                                                   |
 | `payment.expired`                 | `expires_at` passed without full payment                                                                                          | same (`amount_received` may be > 0)                                                                                                                                | Mark order expired; offer a new attempt (new Idempotency-Key). If `amount_received > "0.0000000"`, flag for support: the user is owed a refund.                    |
 | `payment.late_paid`               | Money arrived at or after `expires_at` (sent once)                                                                                | same                                                                                                                                                               | Do not auto-grant. Open a support case: ops decide to refund or honour it manually.                                                                                |
 | `payment.refunded`                | Ops refunded a confirmed payment (manual runbook, not automatic)                                                                  | same                                                                                                                                                               | **Revoke** the purchase if your policy says so; mark refunded.                                                                                                     |
@@ -1275,7 +1275,7 @@ export function formatUsdc(stroops: bigint): string {
 | ------------------------------ | ------------------------------------------- | ----------------------------------------------- | -------------------------- |
 | `MAX_PAYMENT_USDC`             | Converted USDC amount of one payment        | `500`                                           | `422 amount_exceeds_limit` |
 | `MAX_SUBSCRIPTION_PRICE_USDC`  | Plan price per period                       | `100`                                           | `422 amount_exceeds_limit` |
-| `SUBSCRIPTION_APPROVE_PERIODS` | Future charges approved at subscribe (1–12) | `3`                                             | —                          |
+| `SUBSCRIPTION_APPROVE_PERIODS` | Future charges approved at subscribe (1–12) | `3`                                             | none                       |
 
 Check these values with ops per environment and do not offer crypto above the cap (show MoMo only).
 
@@ -1407,11 +1407,11 @@ Renewals and failed charges need a full plan interval to pass (minimum allowed i
 
 These run inside this repo with its `.env` (they need the service's own secrets):
 
-- `pnpm api:call POST /v1/payments '{"merchant_order_id":"o1","customer_ref":"u1","description":"Test","amount":{"currency":"USD","value_minor":100},"return_url":"http://localhost:3000/billing/return"}'` — signed call to a local API (`apps/api/scripts/call.mjs`). The canonical reference for signing.
-- `pnpm e2e:testnet` — payment, underpayment + top-up, expiry, with a local webhook receiver that verifies signatures (`apps/api/scripts/e2e-testnet.mjs`). The canonical reference for webhook verification.
-- `pnpm e2e:testnet:subscriptions` — create, charge, failed charge, wallet cancel.
-- `pnpm e2e:release` — builds and runs both suites (the release gate).
-- `pnpm load:sanity` — burst test incl. the 120/min limit.
+- `pnpm api:call POST /v1/payments '{"merchant_order_id":"o1","customer_ref":"u1","description":"Test","amount":{"currency":"USD","value_minor":100},"return_url":"http://localhost:3000/billing/return"}'`: signed call to a local API (`apps/api/scripts/call.mjs`). The canonical reference for signing.
+- `pnpm e2e:testnet`: payment, underpayment + top-up, expiry, with a local webhook receiver that verifies signatures (`apps/api/scripts/e2e-testnet.mjs`). The canonical reference for webhook verification.
+- `pnpm e2e:testnet:subscriptions`: create, charge, failed charge, wallet cancel.
+- `pnpm e2e:release`: builds and runs both suites (the release gate).
+- `pnpm load:sanity`: burst test incl. the 120/min limit.
 
 ---
 
@@ -1466,7 +1466,7 @@ Where `docs/context.md` and the code differ, this guide follows the code.
 - **No refund API.** Refunds are manual by ops from the treasury (`docs/runbooks/refunds.md`). `payment.refunded` is listed in context §10.2 but is only emitted by that manual SQL step, never automatically.
 - **No list/search, no payment cancel, no plan change, no "cancel at period end".** Cancel is immediate.
 - **Subscriptions approve a limited number of future charges.** At subscribe the user pays period 1 and approves `SUBSCRIPTION_APPROVE_PERIODS` (default 3) more charges, until a ledger limited by the network's max entry TTL. There is no flow to re-approve. When the approval runs out, the next charge fails → `past_due` → `canceled` (`retries_exhausted`). `subscription.allowance_expiring` warns only about the time limit, not about using up the approved amount. Plan for the user to subscribe again (new `POST /v1/subscriptions`).
-- **Slow subscribe confirmation** (fixed in S11): if the checkout submit returns `status: "submitted"` because the network was slow, the worker activates the subscription from the contract's `sub_created` event (matched by transaction hash) and sends `subscription.activated` as usual — typically within a minute. Keep the polling fallback in §8.
+- **Slow subscribe confirmation** (fixed in S11): if the checkout submit returns `status: "submitted"` because the network was slow, the worker activates the subscription from the contract's `sub_created` event (matched by transaction hash) and sends `subscription.activated` as usual, typically within a minute. Keep the polling fallback in §8.
 - **`incomplete` subscriptions never expire on their own.** The checkout link dies after 24 h, but the record stays `incomplete`. Cancel stale ones yourself (`POST .../cancel` works on `incomplete`) or just create a new one.
 - **`subscription.renewed` `amount` is in stroops** (integer string), unlike every other amount (7-decimal string).
 - **Cancel does not require `Idempotency-Key`**, although context §9.1 says it is required on POST.
