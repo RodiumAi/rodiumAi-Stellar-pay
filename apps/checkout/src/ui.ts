@@ -1,7 +1,13 @@
-/** All DOM writes go through textContent/attributes — never innerHTML (§11.4, Trusted Types). */
+/** All DOM writes go through textContent/attributes, never innerHTML (§11.4, Trusted Types). */
 export function setText(doc: Document, id: string, text: string): void {
   const el = doc.getElementById(id);
   if (el !== null) el.textContent = text;
+}
+
+/** Status line plus the colour of its dot (`data-status`, styled in styles.css). */
+export function setStatus(doc: Document, status: string): void {
+  setText(doc, 'status', statusText(status));
+  doc.getElementById('status-dot')?.setAttribute('data-status', status);
 }
 
 export function setBusy(doc: Document, busy: boolean): void {
@@ -14,10 +20,10 @@ export function setBusy(doc: Document, busy: boolean): void {
 
 const STATUS_TEXT: Readonly<Record<string, string>> = {
   pending: 'Waiting for payment',
-  underpaid: 'Partially paid — send the remaining amount',
+  underpaid: 'Partially paid. Send the remaining amount',
   confirmed: 'Payment confirmed',
   expired: 'This payment request has expired',
-  late_paid: 'Payment received after expiry — our team will review it',
+  late_paid: 'Payment received after expiry. Our team will review it',
   refunded: 'Payment refunded',
   incomplete: 'Waiting for your signature',
   active: 'Subscription active',
