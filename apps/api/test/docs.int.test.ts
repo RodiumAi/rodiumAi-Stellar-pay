@@ -12,6 +12,7 @@ mkdirSync(join(dir, 'assets'));
 writeFileSync(join(dir, 'index.html'), '<!doctype html><title>StelPay</title>');
 writeFileSync(join(dir, 'docs', 'quickstart.html'), '<!doctype html><title>Quickstart</title>');
 writeFileSync(join(dir, 'assets', 'docs.abc123.css'), 'body{}');
+writeFileSync(join(dir, 'stelpay-docs.md'), '# StelPay');
 /* eslint-enable security/detect-non-literal-fs-filename */
 
 let h: Harness;
@@ -54,6 +55,14 @@ describe('documentation site', () => {
     expect(
       (await h.server.inject({ method: 'GET', url: '/docs-assets/missing.css' })).statusCode,
     ).toBe(404);
+  });
+
+  it('serves the whole guide as Markdown, and 404s a missing llms.txt', async () => {
+    const res = await h.server.inject({ method: 'GET', url: '/stelpay-docs.md' });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/markdown');
+    expect(res.body).toBe('# StelPay');
+    expect((await h.server.inject({ method: 'GET', url: '/llms.txt' })).statusCode).toBe(404);
   });
 
   it('leaves the signed API untouched', async () => {

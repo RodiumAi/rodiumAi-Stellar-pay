@@ -210,7 +210,7 @@ function renderMarkdown(md, toc) {
         const level = Math.min(depth - 1, 4); // ### → h2 (page title is h1)
         const plain = stripNumber(text);
         const id = slugify(plain);
-        const ep = /^`(GET|POST|PUT|PATCH|DELETE)\s+([^`]+)`\s*(?:—|-)?\s*(.*)$/.exec(plain);
+        const ep = /^`(GET|POST|PUT|PATCH|DELETE)\s+([^`]+)`\s*(?:-|:)?\s*(.*)$/.exec(plain);
         let inner;
         let label;
         if (ep) {
@@ -279,7 +279,7 @@ const quickstart = `
 <p class="lead">Take a payment from your backend in four steps. You need the API key and the webhook public key from the StelPay team (see <a href="/docs/environments">Environments &amp; credentials</a>).</p>
 <ol class="steps">
 <li><h2 id="sign-requests">Sign your requests</h2>
-<p>Every <code>/v1</code> call is signed with HMAC-SHA256 over the method, path, timestamp, a one-time nonce and the SHA-256 of the body. No SDK needed — only <code>node:crypto</code>.</p>
+<p>Every <code>/v1</code> call is signed with HMAC-SHA256 over the method, path, timestamp, a one-time nonce and the SHA-256 of the body. No SDK needed, only <code>node:crypto</code>.</p>
 ${codeBlock(
   `import { createHash, createHmac, randomBytes } from 'node:crypto';
 
@@ -314,7 +314,7 @@ ${tabs('create', [
     code: `const body = JSON.stringify({
   merchant_order_id: 'ord_8f2c',
   customer_ref: 'usr_19ab',
-  description: 'RodiumAI Pro — 1 month',
+  description: 'RodiumAi Pro, 1 month',
   amount: { currency: 'GHS', value_minor: 5000 }, // GHS 50.00
   return_url: 'https://app.rodiumai.io/billing/return?order=ord_8f2c',
 });
@@ -344,7 +344,7 @@ const payment = await res.json(); // { id, status: "pending", checkout_url, amou
 ])}</li>
 <li><h2 id="redirect-to-checkout">Send the user to checkout</h2>
 <p>Redirect the browser to <code>checkout_url</code>. The user pays from Freighter or scans a QR code with any Stellar mobile wallet. When the payment is final they return to your <code>return_url</code>.</p>
-<div class="callout warning"><p><strong>Never grant access on the redirect.</strong> The return trip only means the user left the checkout page — wait for the signed webhook (or poll the payment) before unlocking anything.</p></div></li>
+<div class="callout warning"><p><strong>Never grant access on the redirect.</strong> The return trip only means the user left the checkout page. Wait for the signed webhook (or poll the payment) before unlocking anything.</p></div></li>
 <li><h2 id="handle-the-webhook">Handle the webhook</h2>
 <p>StelPay sends <code>payment.confirmed</code> to your webhook URL, signed with Ed25519 over the raw body. Verify, de-duplicate on the event <code>id</code>, then grant access.</p>
 ${codeBlock(
@@ -359,7 +359,7 @@ export function verifyWebhook(rawBody: Buffer, header: string, publicKeyPem: str
 }`,
   'ts',
 )}
-<div class="callout tip"><p><strong>Exact format.</strong> The precise signed payload, a test vector and the full NestJS receiver are in <a href="/docs/webhooks">Webhooks</a> — copy those rather than this sketch.</p></div></li>
+<div class="callout tip"><p><strong>Exact format.</strong> The precise signed payload, a test vector and the full NestJS receiver are in <a href="/docs/webhooks">Webhooks</a>. Copy those rather than this sketch.</p></div></li>
 </ol>
 <div class="next-cards">
 <a class="card" href="/docs/how-it-works"><strong>How it works</strong><span>Sequence of a payment and a subscription</span></a>
@@ -367,44 +367,71 @@ export function verifyWebhook(rawBody: Buffer, header: string, publicKeyPem: str
 <a class="card" href="/docs/testing"><strong>Test on testnet</strong><span>Wallet setup and scenarios</span></a>
 </div>`;
 
+// Lucide-style line icons (inline, stroke = currentColor).
+const ICONS = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  rocket:
+    '<path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.6-3 2-4c1.6-1.1 5 0 5 0"/><path d="M12 15v5s3-.6 4-2c1.1-1.6 0-5 0-5"/>',
+  book: '<path d="M4 19.5V5a2 2 0 0 1 2-2h14v18H6.5A2.5 2.5 0 0 1 4 18.5"/><path d="M8 7h8"/>',
+  code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+  flag: '<path d="M4 22V4"/><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  github:
+    '<path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.1-1.3-.3-2.5-1-3.5.3-1.2.3-2.4 0-3.5 0 0-1 0-3 1.5a10.4 10.4 0 0 0-6 0C8 2 7 2 7 2c-.3 1.1-.3 2.3 0 3.5a5.4 5.4 0 0 0-1 3.5c0 3.5 3 5.5 6 5.5-.4.5-.8 1.1-1 1.8-.2.6-.2 1.2 0 1.7v4"/><path d="M9 18c-4.5 2-5-2-7-2"/>',
+  download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  arrow: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  repeat:
+    '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+};
+const icon = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+const MD_PATH = '/stelpay-docs.md';
+const mdButton = `<a class="btn md-btn" href="${MD_PATH}" download="stelpay-docs.md" title="The whole guide as one Markdown file, ready to give to an AI assistant">${icon('download')}Download .md</a>`;
+
+const GROUP_ICONS = {
+  'Get started': 'rocket',
+  Guides: 'book',
+  'API reference': 'code',
+  Launch: 'flag',
+};
+
+const tile = (ico, title, text, href, external) =>
+  `<div class="tile"><span class="ico">${icon(ico)}</span><div><h3>${title}</h3><p>${text}</p><a class="explore" href="${href}"${external ? ' rel="noopener" target="_blank"' : ''}>Explore ${icon('arrow')}</a></div></div>`;
+
 const landing = `
-<section class="hero">
-<p class="eyebrow"><span class="status-dot" data-status></span><span data-status-text>Checking service…</span> · Stellar testnet</p>
-<h1>Accept USDC on Stellar,<br>as easily as mobile money.</h1>
-<p class="lead">StelPay is a payment API for one-time payments and recurring subscriptions in USDC. Your app calls a signed REST API and gets a hosted checkout link and signed webhooks — no wallets, keys or blockchain code in your codebase.</p>
-<div class="hero-actions"><a class="btn primary" href="/docs/quickstart">Quickstart</a><a class="btn" href="/docs/api-reference">API reference</a><a class="btn ghost" href="${REPO}" rel="noopener" target="_blank">GitHub ↗</a></div>
-<div class="hero-code">${codeBlock(
-  `POST ${BASE_URL}/v1/payments
+<div class="landing-head"><div><span class="tag">Overview</span>
+<h1>Accept <span class="accent">USDC</span> on Stellar,<br>as easily as mobile money.</h1>
+<p class="lead">StelPay is a payment API for one-time payments and recurring subscriptions in USDC. Your app calls a signed REST API and gets a hosted checkout link and signed webhooks. No wallets, keys or blockchain code in your codebase.</p></div>
+<div class="head-actions"><span class="status-pill"><span class="status-dot" data-status></span><span data-status-text>Checking service…</span></span>${mdButton}</div></div>
+<section class="qs-card"><div class="qs-text"><h2>Quickstart</h2><p>Create your first payment from your backend in four steps: sign the request, create the payment, send the user to checkout, and handle the webhook.</p>
+<div class="qs-actions"><a class="btn primary" href="/docs/quickstart">Start building ${icon('arrow')}</a><a class="btn" href="/docs/api-reference">API reference</a></div></div>
+<div class="qs-code">${codeBlock(
+  `POST /v1/payments
 Idempotency-Key: pay_ord_8f2c_1
-X-RP-Key-Id: ak_2026_10   X-RP-Signature: …
+X-RP-Key-Id: ak_2026_10
+X-RP-Signature: …
 
-{ "amount": { "currency": "GHS", "value_minor": 5000 }, "merchant_order_id": "ord_8f2c", … }
+{ "amount": { "currency": "GHS", "value_minor": 5000 },
+  "merchant_order_id": "ord_8f2c", … }
 
-→ 201 { "status": "pending", "amount_due": { "asset": "USDC", "value": "3.2500000" },
+→ 201 { "status": "pending",
+        "amount_due": { "asset": "USDC", "value": "3.2500000" },
         "checkout_url": "${BASE_URL}/c/…" }`,
   'http',
-)}</div>
-</section>
-<section class="features">
-<div class="feature"><span class="icon" aria-hidden="true">⚡</span><h2>One-time payments</h2><p>Fiat prices converted to USDC at the live rate. Settles in ~5 seconds, worldwide, for a fraction of a cent. Underpayments and top-ups handled.</p></div>
-<div class="feature"><span class="icon" aria-hidden="true">↻</span><h2>Subscriptions on-chain</h2><p>Users sign once. A Soroban smart contract enforces the price, the schedule and the recipient — it can never charge early, twice or more.</p></div>
-<div class="feature"><span class="icon" aria-hidden="true">✓</span><h2>Signed webhooks</h2><p><code>payment.confirmed</code>, <code>subscription.renewed</code> and more, Ed25519-signed and delivered at least once with retries.</p></div>
-<div class="feature"><span class="icon" aria-hidden="true">🔒</span><h2>Non-custodial</h2><p>Money moves straight from the user's wallet to your merchant account. StelPay never holds funds.</p></div>
-</section>
-<section class="flow">
-<h2>Integrate in an afternoon</h2>
-<ol class="flow-steps">
-<li><strong>Create</strong><span>Your backend calls <code>POST /v1/payments</code> with a signed request.</span></li>
-<li><strong>Redirect</strong><span>Send the user to the hosted <code>checkout_url</code>.</span></li>
-<li><strong>Pay</strong><span>They pay from Freighter or any SEP-7 mobile wallet.</span></li>
-<li><strong>Confirm</strong><span>You receive <code>payment.confirmed</code> and grant access.</span></li>
-</ol>
-</section>
-<section class="links">
-<a class="card" href="/docs/quickstart"><strong>Quickstart</strong><span>First payment in four steps</span></a>
-<a class="card" href="/docs/webhooks"><strong>Webhooks</strong><span>Verify signatures, every event type</span></a>
-<a class="card" href="${CONTRACT}" rel="noopener" target="_blank"><strong>Subscription contract ↗</strong><span>Live on Stellar testnet</span></a>
-</section>`;
+)}</div></section>
+<div class="section-head"><h2>Explore StelPay</h2><p>Everything the main app needs to take USDC payments and subscriptions.</p></div>
+<div class="tiles">
+${tile('card', 'One-time payments', 'Fiat prices converted to USDC at the live rate. Settles in about 5 seconds for a fraction of a cent; underpayments and top-ups handled.', '/docs/checkout')}
+${tile('repeat', 'Subscriptions on-chain', 'Users sign once. A Soroban smart contract enforces the price, schedule and recipient. It can never charge early, twice or more.', '/docs/how-it-works')}
+${tile('bell', 'Signed webhooks', '<code>payment.confirmed</code>, <code>subscription.renewed</code> and more, Ed25519-signed and delivered at least once with retries.', '/docs/webhooks')}
+${tile('shield', 'Non-custodial', "Money moves straight from the user's wallet to your merchant account. StelPay never holds funds.", CONTRACT, true)}
+</div>
+<footer class="site-foot">${'${byRodiumAi}'}<span class="foot-links"><a href="${REPO}" rel="noopener" target="_blank">GitHub</a><a href="/docs/quickstart">Docs</a><a href="${CONTRACT}" rel="noopener" target="_blank">Contract</a></span></footer>`;
 
 // ── assemble pages ───────────────────────────────────────────────────────────
 const pages = [
@@ -450,10 +477,22 @@ const hashed = (name, content) => {
   writeFileSync(join(out, 'assets', file), content);
   return `/docs-assets/${file}`;
 };
-const css = hashed('docs.css', readFileSync(join(here, 'src', 'docs.css')));
+// RodiumAi brand kit (apps/docs/src/brand): monogram, horizontal logos, favicon, Open Sauce Sans.
+const brand = (f) => readFileSync(join(here, 'src', 'brand', f));
+const fonts = {
+  __FONT_REGULAR__: hashed('open-sauce-sans-400.woff', brand('OpenSauceSans-Regular.woff')),
+  __FONT_MEDIUM__: hashed('open-sauce-sans-500.woff', brand('OpenSauceSans-Medium.woff')),
+  __FONT_SEMIBOLD__: hashed('open-sauce-sans-600.woff', brand('OpenSauceSans-SemiBold.woff')),
+};
+let cssText = readFileSync(join(here, 'src', 'docs.css'), 'utf8');
+for (const [k, v] of Object.entries(fonts)) cssText = cssText.replaceAll(k, v);
+const css = hashed('docs.css', cssText);
 const themeJs = hashed('theme.js', readFileSync(join(here, 'src', 'theme.js')));
 const js = hashed('docs.js', readFileSync(join(here, 'src', 'docs.js')));
-const logo = hashed('logo.svg', readFileSync(join(here, 'src', 'logo.svg')));
+const favicon = hashed('favicon.svg', brand('favicon.svg'));
+const logoLight = hashed('rodiumai-logo-light.svg', brand('rodiumai-logo-horizontal-light.svg'));
+const logoDark = hashed('rodiumai-logo-dark.svg', brand('rodiumai-logo-horizontal-dark.svg'));
+const byRodiumAi = `<span class="by-rodiumai"><span>A product of</span><img class="logo-on-light" src="${logoLight}" alt="RodiumAi" width="128" height="32"><img class="logo-on-dark" src="${logoDark}" alt="RodiumAi" width="128" height="32"></span>`;
 
 const textOf = (html) =>
   html
@@ -469,13 +508,23 @@ const searchUrl = hashed('search.json', JSON.stringify(search));
 const nav = (active) =>
   GROUPS.map((g) => {
     const items = order.filter((p) => p.group === g);
-    return `<div class="nav-group"><p class="nav-title">${esc(g)}</p><ul>${items
+    return `<details class="nav-group" open><summary>${icon(GROUP_ICONS[g])}${esc(g)}${icon('chevron').replace('class="i"', 'class="i chev"')}</summary><ul>${items
       .map(
         (p) =>
           `<li><a href="/docs/${p.slug}"${p.slug === active ? ' aria-current="page"' : ''}>${esc(p.title)}</a></li>`,
       )
-      .join('')}</ul></div>`;
+      .join('')}</ul></details>`;
   }).join('');
+
+const searchBox = (label) =>
+  `<div class="search"><label>${icon('search')}<input type="search" placeholder="${label}" aria-label="Search docs" autocomplete="off" spellcheck="false"><kbd>Ctrl K</kbd></label><div class="results" role="listbox" hidden></div></div>`;
+const TOP_NAV = [
+  ['/', 'Overview', ''],
+  ['/docs/quickstart', 'Quickstart', 'quickstart'],
+  ['/docs/api-reference', 'API reference', 'api-reference'],
+  ['/docs/webhooks', 'Webhooks', 'webhooks'],
+  ['/docs/testing', 'Testnet', 'testing'],
+];
 
 function layout(p) {
   const i = order.indexOf(p);
@@ -484,7 +533,7 @@ function layout(p) {
   const url = p.landing ? '/' : `/docs/${p.slug}`;
   const description = p.landing
     ? 'StelPay: accept USDC on Stellar for one-time payments and subscriptions, with a signed REST API, hosted checkout and webhooks.'
-    : `${p.title} — StelPay integration docs.`;
+    : `${p.title}: StelPay integration docs.`;
   const toc = p.toc.length
     ? `<aside class="toc" aria-label="On this page"><p class="toc-title">On this page</p><ul>${p.toc
         .map(
@@ -494,8 +543,8 @@ function layout(p) {
         .join('')}</ul></aside>`
     : '';
   const article = p.landing
-    ? `<main id="content" class="landing">${p.html}</main>`
-    : `<main id="content" class="doc"><article><p class="breadcrumb">${esc(p.group)}</p><h1>${esc(p.title)}</h1>${p.html}
+    ? `<main id="content" class="landing">${p.html.replace('${byRodiumAi}', byRodiumAi)}</main>`
+    : `<main id="content" class="doc"><article><div class="page-head"><span class="tag">${esc(p.group)}</span>${mdButton}</div><h1>${esc(p.title)}</h1>${p.html}
 <footer class="doc-foot"><div class="pager">${prev ? `<a class="prev" href="/docs/${prev.slug}"><span>Previous</span>${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a class="next" href="/docs/${next.slug}"><span>Next</span>${esc(next.title)}</a>` : ''}</div>
 </footer></article>${toc}</main>`;
   return `<!doctype html>
@@ -503,12 +552,12 @@ function layout(p) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(p.landing ? 'StelPay — USDC payments on Stellar' : `${p.title} · StelPay Docs`)}</title>
+<title>${esc(p.landing ? 'StelPay: USDC payments on Stellar' : `${p.title} · StelPay Docs`)}</title>
 <meta name="description" content="${esc(description)}">
 <meta property="og:title" content="${esc(p.landing ? 'StelPay' : `${p.title} · StelPay Docs`)}">
 <meta property="og:description" content="${esc(description)}">
 <link rel="canonical" href="${BASE_URL}${url}">
-<link rel="icon" href="${logo}" type="image/svg+xml">
+<link rel="icon" href="${favicon}" type="image/svg+xml">
 <link rel="stylesheet" href="${css}">
 <script src="${themeJs}"></script>
 <script src="${js}" defer data-search="${searchUrl}"></script>
@@ -516,22 +565,32 @@ function layout(p) {
 <body${p.landing ? ' class="is-landing"' : ''}>
 <a class="skip" href="#content">Skip to content</a>
 <header class="topbar">
-<button class="menu" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">☰</button>
-<a class="brand" href="/"><img src="${logo}" alt="" width="26" height="26"><span>StelPay</span><span class="badge">Docs</span></a>
-<span class="pill testnet" title="All examples run on the Stellar test network">Testnet</span>
-<div class="search"><input type="search" placeholder="Search docs" aria-label="Search docs" autocomplete="off" spellcheck="false"><kbd>/</kbd><div class="results" role="listbox" hidden></div></div>
-<nav class="top-links" aria-label="Site"><a href="/docs/quickstart">Quickstart</a><a href="/docs/api-reference">API</a><a href="${REPO}" rel="noopener" target="_blank">GitHub</a>
-<span class="status" title="Live API status"><span class="status-dot" data-status></span><span class="status-label" data-status-text>Status</span></span>
-<button class="theme" type="button" aria-label="Toggle dark mode">◐</button></nav>
+<button class="icon-btn menu" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">${icon('menu')}</button>
+<a class="brand" href="/"><img class="logo-on-light" src="${logoLight}" alt="RodiumAi" width="104" height="26"><img class="logo-on-dark" src="${logoDark}" alt="RodiumAi" width="104" height="26"><span class="divider"></span><span class="product">StelPay</span></a>
+<span class="tag testnet" title="All examples run on the Stellar test network">Testnet</span>
+<nav class="top-nav" aria-label="Site">${TOP_NAV.map(([href, label, slug]) => `<a href="${href}"${(p.landing ? '' : p.slug) === slug ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+<div class="top-actions"><button class="icon-btn theme" type="button" aria-label="Toggle dark mode">${icon('moon')}</button><a class="icon-btn" href="${REPO}" rel="noopener" target="_blank" aria-label="GitHub">${icon('github')}</a><a class="btn primary" href="/docs/quickstart">Start building ${icon('arrow')}</a></div>
 </header>
 <div class="shell">
-<nav id="sidebar" class="sidebar" aria-label="Documentation"><a class="nav-home" href="/"${p.landing ? ' aria-current="page"' : ''}>Overview</a>${nav(p.slug)}</nav>
-${article}
+<nav id="sidebar" class="sidebar" aria-label="Documentation"><p class="side-title">Documentation</p><a class="nav-home" href="/"${p.landing ? ' aria-current="page"' : ''}>${icon('home')}Overview</a>${nav(p.slug)}</nav>
+<div class="main-col"><div class="content-search">${searchBox('Search the docs…')}</div>
+${article}</div>
 </div>
 </body>
 </html>
 `;
 }
+
+// One Markdown file with the whole guide, for AI assistants and offline reading, plus llms.txt
+// (https://llmstxt.org) pointing to it.
+writeFileSync(
+  join(out, 'stelpay-docs.md'),
+  `<!-- StelPay integration docs. Live site: ${BASE_URL}/docs/quickstart. Source: ${REPO}/blob/main/docs/integration.md -->\n\n${source}`,
+);
+writeFileSync(
+  join(out, 'llms.txt'),
+  `# StelPay\n\n> USDC payments and subscriptions on Stellar for the RodiumAi main app: a signed REST API, hosted checkout and Ed25519-signed webhooks.\n\n## Docs\n\n- [Full integration guide (Markdown)](${BASE_URL}${MD_PATH}): authentication, endpoints, checkout, webhooks, errors, testing\n${order.map((p) => `- [${p.title}](${BASE_URL}/docs/${p.slug})`).join('\n')}\n`,
+);
 
 for (const p of pages) {
   const file = p.landing ? join(out, 'index.html') : join(out, 'docs', `${p.slug}.html`);
