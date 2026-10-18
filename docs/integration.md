@@ -253,6 +253,7 @@ export type RpErrorCode =
   | 'amount_exceeds_limit'
   | 'invalid_return_url'
   | 'unknown_plan'
+  | 'country_not_allowed'
   | 'invalid_state'
   | 'rate_limited'
   | 'fx_unavailable'
@@ -642,14 +643,15 @@ There is **no** endpoint to list or search payments, cancel a one-time payment, 
 
 Request body (`apps/api/src/routes/payments.ts`):
 
-| Field                | Type    | Rules                                                                            |
-| -------------------- | ------- | -------------------------------------------------------------------------------- |
-| `merchant_order_id`  | string  | 1–128 chars. Echoed back and in webhooks. Not enforced unique.                   |
-| `customer_ref`       | string  | 1–256 chars. Encrypted at rest; **never returned**. Use an opaque user id.       |
-| `description`        | string  | 1–140 chars. Shown on the checkout page.                                         |
-| `amount.currency`    | string  | `^[A-Z]{3}$`, and must be in `FX_SUPPORTED_FIAT`                                 |
-| `amount.value_minor` | integer | > 0, ≤ 2^53−1, in the currency's minor unit (see §9)                             |
-| `return_url`         | string  | ≤ 2048 chars; valid URL; origin exactly in `RETURN_URL_ORIGINS`; no `user:pass@` |
+| Field                | Type    | Rules                                                                              |
+| -------------------- | ------- | ---------------------------------------------------------------------------------- |
+| `merchant_order_id`  | string  | 1–128 chars. Echoed back and in webhooks. Not enforced unique.                     |
+| `customer_ref`       | string  | 1–256 chars. Encrypted at rest; **never returned**. Use an opaque user id.         |
+| `description`        | string  | 1–140 chars. Shown on the checkout page.                                           |
+| `amount.currency`    | string  | `^[A-Z]{3}$`, and must be in `FX_SUPPORTED_FIAT`                                   |
+| `amount.value_minor` | integer | > 0, ≤ 2^53−1, in the currency's minor unit (see §9)                               |
+| `return_url`         | string  | ≤ 2048 chars; valid URL; origin exactly in `RETURN_URL_ORIGINS`; no `user:pass@`   |
+| `customer_country`   | string  | Optional. ISO 3166-1 alpha-2, upper case (e.g. `GH`). Checked, never stored (§9.6) |
 
 Example:
 
@@ -697,6 +699,7 @@ Errors:
 | 422    | `invalid_return_url`       | Not a URL, origin not allowed (scheme, host and port must match), or has credentials                                     |
 | 422    | `unsupported_currency`     | Currency not in `FX_SUPPORTED_FIAT`, or the FX provider has no rate for it                                               |
 | 422    | `amount_exceeds_limit`     | Converted USDC amount > `MAX_PAYMENT_USDC`. Message: `Amount exceeds the per-payment limit of 500.0000000 USDC`          |
+| 422    | `country_not_allowed`      | `customer_country` is in `BLOCKED_COUNTRIES` (§9.6)                                                                      |
 | 429    | `rate_limited`             | Over 120/min for your key; see `Retry-After`                                                                             |
 | 503    | `fx_unavailable`           | Non-USD and the rate cannot be fetched or is too old                                                                     |
 | 503    | `service_unavailable`      | Nonce store (Redis) down                                                                                                 |
@@ -745,6 +748,7 @@ Request body (`apps/api/src/routes/subscriptions.ts`):
 | `customer_ref`              | string | 1–256 chars, encrypted, never returned |
 | `plan_code`                 | string | 1–64 chars, must be a configured plan  |
 | `return_url`                | string | Same rules as payments                 |
+| `customer_country`          | string | Optional, same rules as payments       |
 
 Example body:
 
@@ -784,6 +788,7 @@ Errors: same 400/401/409/413/415/429/503/500 as payments, plus:
 | 422    | `unknown_plan`         | `plan_code` not configured                 |
 | 422    | `amount_exceeds_limit` | Plan price > `MAX_SUBSCRIPTION_PRICE_USDC` |
 | 422    | `invalid_return_url`   | As above                                   |
+| 422    | `country_not_allowed`  | As above                                   |
 
 ### 5.4 `GET /v1/subscriptions/{id}`
 
@@ -1279,6 +1284,20 @@ export function formatUsdc(stroops: bigint): string {
 
 Check these values with ops per environment and do not offer crypto above the cap (show MoMo only).
 
+### 9.6 Compliance controls
+
+Two checks run inside the service. Both are configured per deployment by ops.
+
+**Country rule.** Send `customer_country` (the customer's country as your app knows it, ISO 3166-1 alpha-2) on `POST /v1/payments` and `POST /v1/subscriptions`. If it is in `BLOCKED_COUNTRIES` the request fails with `422 country_not_allowed`: hide the crypto option for that user and offer MoMo. The default list is the comprehensively embargoed jurisdictions `CU,IR,KP,SY`; ops can add countries (or set `none`). With `REQUIRE_CUSTOMER_COUNTRY=true` a request without the field fails with `400 validation_failed`, so send it on every request. The value is only checked, never stored or returned.
+
+**Wallet screening.** The service screens payer wallets against the OFAC SDN list (Stellar addresses, refreshed daily) plus an ops block list (`BLOCKED_ADDRESSES`).
+
+- On the checkout page, a blocked wallet is refused before anything is prepared for it to sign. The user sees `This wallet cannot be used for payment`.
+- A payment that still arrives from a blocked wallet (for example by QR code or a manual transfer) is **never credited**: it is held for review like an unmatched receipt, the payment stays `pending` and then expires, and no `payment.confirmed` is sent. Ops decide what happens to the funds.
+- If the list cannot be downloaded the service keeps the last copy; if it has never loaded, only the ops block list applies and ops are alerted (payments keep working).
+
+**Subscription event polling.** The worker reads contract events every `CONTRACT_EVENTS_INTERVAL_MS` (default 5 s, up to 5 min). A longer interval lowers RPC usage; `subscription.activated` from a slow submit and on-chain cancels arrive up to that much later.
+
 ---
 
 ## 10. Errors, rate limits, timeouts and retries
@@ -1303,6 +1322,7 @@ From `apps/api/src/errors.ts`:
 | `amount_exceeds_limit`     | 422  | No                                      | Above cap; offer MoMo                                |
 | `invalid_return_url`       | 422  | No                                      | Origin not allowlisted                               |
 | `unknown_plan`             | 422  | No                                      | Plan code not configured                             |
+| `country_not_allowed`      | 422  | No                                      | Customer's country is blocked; offer MoMo only       |
 | `rate_limited`             | 429  | Yes, after `Retry-After` seconds        | Slow down                                            |
 | `internal_error`           | 500  | Yes, with backoff, same Idempotency-Key |                                                      |
 | `fx_unavailable`           | 503  | Yes, with backoff (minutes)             | Or offer MoMo                                        |
@@ -1425,6 +1445,7 @@ Credentials and config
 - [ ] Production `RETURN_URL_ORIGINS`, `WEBHOOK_URL` (https, no redirects), `FX_SUPPORTED_FIAT`, plan codes and caps confirmed with ops.
 - [ ] Network path from your backend to the API (and mTLS client cert if ops require it). Worker egress to your webhook host allowed.
 - [ ] Feature flag present and **off** by default; turned on gradually.
+- [ ] `customer_country` sent on every create request; `country_not_allowed` hides crypto for that user (§9.6).
 
 Calling the API
 
