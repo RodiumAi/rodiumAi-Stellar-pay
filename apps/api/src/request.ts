@@ -50,3 +50,20 @@ export function assertReturnUrl(value: string, allowedOrigins: readonly string[]
     throw new ApiError('invalid_return_url', 'return_url origin is not allowed');
   }
 }
+
+/**
+ * Country rule: refuses customers in blocked jurisdictions when the integrator says where the
+ * customer is (`customer_country`, ISO 3166-1 alpha-2). The value is only checked, never stored.
+ */
+export function assertCustomerCountry(
+  country: string | undefined,
+  rule: { readonly blocked: readonly string[]; readonly required: boolean },
+): void {
+  if (country === undefined) {
+    if (rule.required) throw new ApiError('validation_failed', 'customer_country is required');
+    return;
+  }
+  if (rule.blocked.includes(country)) {
+    throw new ApiError('country_not_allowed', 'Payments are not available in this country');
+  }
+}

@@ -71,6 +71,7 @@ export async function processPage(
   limit: number,
   cursorName: string | null,
   logger: JobLogger,
+  isBlocked: (address: string) => boolean = () => false,
 ): Promise<PageStats> {
   const page = await source.fetchPayments(position, limit);
   const stats = { applied: 0, unmatched: 0, duplicates: 0, ignored: 0 };
@@ -79,6 +80,22 @@ export async function processPage(
     for (const p of page.payments) {
       lastLedger = Math.max(lastLedger ?? 0, p.ledger);
       const c = classifyPayment(p, rules);
+      if (c.kind !== 'ignored' && isBlocked(p.from)) {
+        // Money from a screened wallet is never credited: parked for review like any
+        // unmatched receipt (ops decide on reporting / returning it).
+        logger.error(
+          { alert: 'sanctioned_sender', tx_hash: p.txHash, from: p.from },
+          'receipt from a blocked wallet held for review',
+        );
+        if (c.amount !== null) {
+          const stored = await storeUnmatchedReceipt(tx, candidate(p, c.amount, p.memo.value));
+          if (stored) stats.unmatched += 1;
+          else stats.duplicates += 1;
+        } else {
+          stats.unmatched += 1;
+        }
+        continue;
+      }
       if (c.kind === 'ignored') {
         stats.ignored += 1;
         continue;
@@ -141,6 +158,8 @@ export interface IngestDeps {
   readonly logger: JobLogger;
   readonly pageSize?: number;
   readonly maxPagesPerPass?: number;
+  /** Wallet screening; receipts from blocked senders are held for review. */
+  readonly isBlocked?: (address: string) => boolean;
 }
 
 /**
@@ -201,6 +220,7 @@ export function createIngestJob(
           deps.pageSize ?? 200,
           cursorName,
           deps.logger,
+          deps.isBlocked,
         );
         const processed = stats.lastLedger ?? saved.ledger;
         deps.metrics.set('ingest_lag_ledgers', Math.max(0, stats.latestLedger - processed));
@@ -228,6 +248,7 @@ export interface ReconcileDeps {
   readonly metrics: Metrics;
   /** Context §13.4: re-scan the last 2,000 ledgers. */
   readonly windowLedgers?: number;
+  readonly isBlocked?: (address: string) => boolean;
 }
 
 /** Re-scans recent ledgers and applies anything missed; idempotent via receipt uniqueness. */
@@ -251,6 +272,7 @@ export function createReconcileJob(deps: ReconcileDeps, intervalMs = 15 * 60_000
           200,
           null,
           deps.logger,
+          deps.isBlocked,
         );
         filled += stats.applied + stats.unmatched;
         if (stats.empty || (stats.lastLedger !== null && stats.lastLedger >= cursor.ledger)) break;

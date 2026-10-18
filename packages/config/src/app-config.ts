@@ -81,6 +81,18 @@ const EnvSchema = z
   });
 
 /** `KEY=` in an env file means "not set", so optional settings fall back to defaults. */
+/** Comma-separated Stellar accounts the operator refuses as payers (wallet screening). */
+export const blockedAddressList = z
+  .string()
+  .default('')
+  .transform((v) =>
+    v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  )
+  .pipe(z.array(z.string().regex(/^G[A-Z2-7]{55}$/, 'must be Stellar account ids (G…)')));
+
 export function withoutEmpty(
   env: Readonly<Record<string, string | undefined>>,
 ): Record<string, string> {

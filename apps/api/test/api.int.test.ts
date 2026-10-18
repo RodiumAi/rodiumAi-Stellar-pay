@@ -185,6 +185,53 @@ describe('POST /v1/payments', () => {
   });
 });
 
+describe('country rule', () => {
+  const sub = (o: Record<string, unknown> = {}) => ({
+    merchant_subscription_ref: 'sub_country',
+    customer_ref: 'usr_country',
+    plan_code: 'pro_monthly',
+    return_url: 'https://app.rodium.test/billing/return',
+    ...o,
+  });
+
+  it('accepts an allowed country and an omitted one', async () => {
+    for (const body of [paymentBody({ customer_country: 'GH' }), paymentBody()]) {
+      expect((await h.server.inject(signed('POST', '/v1/payments', body))).statusCode).toBe(201);
+    }
+  });
+
+  it.each<[string, string, Record<string, unknown>]>([
+    ['a payment', '/v1/payments', paymentBody({ customer_country: 'IR' })],
+    ['a subscription', '/v1/subscriptions', sub({ customer_country: 'KP' })],
+  ])('refuses %s from a blocked country with 422 country_not_allowed', async (_n, url, body) => {
+    const res = await h.server.inject(signed('POST', url, body));
+    expect(res.statusCode).toBe(422);
+    expect(json(res.body).error?.code).toBe('country_not_allowed');
+  });
+
+  it.each([['gh'], ['GHA'], ['']])('rejects a malformed country %j', async (c) => {
+    const res = await h.server.inject(
+      signed('POST', '/v1/payments', paymentBody({ customer_country: c })),
+    );
+    expect(res.statusCode).toBe(400);
+    expect(json(res.body).error?.code).toBe('validation_failed');
+  });
+
+  it('can require the country, and block extra countries', async () => {
+    const strict = await harness({ requireCustomerCountry: true, blockedCountries: ['GH'] });
+    const missing = await strict.server.inject(signed('POST', '/v1/payments', paymentBody()));
+    expect(missing.statusCode).toBe(400);
+    const ghana = await strict.server.inject(
+      signed('POST', '/v1/payments', paymentBody({ customer_country: 'GH' })),
+    );
+    expect(json(ghana.body).error?.code).toBe('country_not_allowed');
+    const kenya = await strict.server.inject(
+      signed('POST', '/v1/payments', paymentBody({ customer_country: 'KE' })),
+    );
+    expect(kenya.statusCode).toBe(201);
+  });
+});
+
 describe('authentication (context §9.1)', () => {
   const create = (o = {}) => signed('POST', '/v1/payments', paymentBody(), o);
 

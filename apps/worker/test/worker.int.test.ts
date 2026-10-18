@@ -127,6 +127,32 @@ describe('ingest pipeline (context §13.4)', () => {
     });
   });
 
+  it('a payment from a blocked wallet is held for review, never credited', async () => {
+    const p = await payment(100_000_000n);
+    const blockedWallet = `G${'X'.repeat(55)}`;
+    const logged: object[] = [];
+    const logger = { ...silent, error: (o: object) => void logged.push(o) };
+    const source = fakeSource(`t-${newId()}`, [
+      observed(p.memo, '10.0000000', { from: blockedWallet }),
+    ]);
+    const stats = await processPage(
+      worker,
+      source,
+      rules,
+      { startLedger: 1 },
+      50,
+      null,
+      logger,
+      (address) => address === blockedWallet,
+    );
+    expect(stats).toMatchObject({ applied: 0, unmatched: 1 });
+    expect(await findPaymentById(worker, p.id)).toMatchObject({
+      status: 'pending',
+      amount_received_stroops: 0n,
+    });
+    expect(logged[0]).toMatchObject({ alert: 'sanctioned_sender', from: blockedWallet });
+  });
+
   it('wrong asset and unknown memo are stored unmatched, never credited', async () => {
     const p = await payment(100_000_000n);
     const source = fakeSource(`t-${newId()}`, [

@@ -27,4 +27,6 @@ export interface ApiDeps {
   readonly now: () => Date;
   readonly logger: FastifyBaseLogger;
   readonly health: HealthChecks;
+  /** Wallet screening (OFAC list + operator block list). */
+  readonly isBlockedWallet: (address: string) => boolean;
 }

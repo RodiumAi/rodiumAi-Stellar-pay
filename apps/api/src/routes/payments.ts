@@ -14,7 +14,13 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
-import { assertReturnUrl, idempotencyKey, parseBody, requestHash } from '../request.js';
+import {
+  assertCustomerCountry,
+  assertReturnUrl,
+  idempotencyKey,
+  parseBody,
+  requestHash,
+} from '../request.js';
 
 const CreatePayment = z.object({
   merchant_order_id: z.string().min(1).max(128),
@@ -25,6 +31,10 @@ const CreatePayment = z.object({
     value_minor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   }),
   return_url: z.string().max(2048),
+  customer_country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
 });
 
 const Id = z.object({ id: z.uuid() });
@@ -57,6 +67,10 @@ export function registerPaymentRoutes(app: FastifyInstance, deps: ApiDeps): void
     const key = idempotencyKey(req);
     const body = parseBody(req, CreatePayment);
     assertReturnUrl(body.return_url, deps.api.returnUrlOrigins);
+    assertCustomerCountry(body.customer_country, {
+      blocked: deps.api.blockedCountries,
+      required: deps.api.requireCustomerCountry,
+    });
 
     if (!fxConfig.supportedFiat.includes(body.amount.currency)) {
       throw new ApiError(

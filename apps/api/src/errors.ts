@@ -12,6 +12,7 @@ export type ErrorCode =
   | 'amount_exceeds_limit'
   | 'invalid_return_url'
   | 'unknown_plan'
+  | 'country_not_allowed'
   | 'invalid_state'
   | 'invalid_transaction'
   | 'already_submitted'
@@ -40,6 +41,7 @@ const STATUS: ReadonlyMap<ErrorCode, number> = new Map<ErrorCode, number>([
   ['amount_exceeds_limit', 422],
   ['invalid_return_url', 422],
   ['unknown_plan', 422],
+  ['country_not_allowed', 422],
   ['rate_limited', 429],
   ['internal_error', 500],
   ['fx_unavailable', 503],
