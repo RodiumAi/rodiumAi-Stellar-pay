@@ -16,7 +16,14 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { db } from '../../../packages/db/test/fixtures.js';
 import { checkoutHeaders } from '../src/checkout/headers.js';
 import type { CheckoutDeps } from '../src/checkout/routes.js';
-import { appConfig, harness, paymentBody, signed, type Harness } from './harness.js';
+import {
+  appConfig,
+  BLOCKED_WALLET,
+  harness,
+  paymentBody,
+  signed,
+  type Harness,
+} from './harness.js';
 
 const merchant = Keypair.random().publicKey() as StellarAddress;
 const user = Keypair.random();
@@ -285,6 +292,22 @@ describe('prepare → sign → submit', () => {
     });
     expect(again.statusCode).toBe(409);
     expect(horizonCalls.filter((c) => c.url.endsWith('/transactions')).length - before).toBe(1);
+  });
+
+  it('refuses a blocked wallet before loading or building anything', async () => {
+    const { token } = await createPayment();
+    const before = horizonCalls.length;
+    const res = await h.server.inject({
+      method: 'POST',
+      url: `/c/${token}/prepare`,
+      payload: { address: BLOCKED_WALLET },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body)).toEqual({
+      error: { code: 'validation_failed', message: 'This wallet cannot be used for payment' },
+    });
+    expect(horizonCalls.length).toBe(before);
+    expect(h.logs.some((l) => l.includes('"alert":"sanctioned_wallet"'))).toBe(true);
   });
 
   it('rejects an account that is not active', async () => {

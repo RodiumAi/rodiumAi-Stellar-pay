@@ -10,6 +10,7 @@ import { createDataKey, loadKeyring } from '@rp/security/envelope';
 import { signRequest } from '@rp/security/hmac-auth';
 import { createLocalDevKms } from '@rp/security/kms';
 import { createLogger } from '@rp/security/logger';
+import { Keypair } from '@stellar/stellar-sdk';
 import type { InjectOptions } from 'fastify';
 import type { ApiConfig } from '../src/api-config.js';
 import type { ApiDeps } from '../src/deps.js';
@@ -23,6 +24,8 @@ import { db } from '../../../packages/db/test/fixtures.js';
 
 export const KEY_ID = 'ak_2026_10';
 export const KEY_SECRET = randomBytes(32);
+/** On the test block list (wallet screening). */
+export const BLOCKED_WALLET = Keypair.random().publicKey();
 
 export const appConfig: AppConfig = {
   env: 'test',
@@ -75,6 +78,9 @@ export function apiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     dataKeys: { current: '00'.repeat(16), stored: [] },
     awsKmsKeyId: null,
     localDevKmsMasterKey: null,
+    sanctions: { source: 'off', blocked: [BLOCKED_WALLET] },
+    blockedCountries: ['CU', 'IR', 'KP', 'SY'],
+    requireCustomerCountry: false,
     ...overrides,
   };
 }
@@ -125,9 +131,10 @@ export async function harness(
     },
   };
   const health = { redis: true };
+  const api = apiConfig(overrides);
   const deps: ApiDeps = {
     app,
-    api: apiConfig(overrides),
+    api,
     db: db('api'),
     kv,
     rateLimiter,
@@ -136,6 +143,7 @@ export async function harness(
     randomBytes,
     now: () => new Date(),
     logger,
+    isBlockedWallet: (address) => api.sanctions.blocked.includes(address),
     health: {
       database: () => Promise.resolve(true),
       redis: () => Promise.resolve(health.redis),

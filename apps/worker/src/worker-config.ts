@@ -1,6 +1,7 @@
 import { createPrivateKey, type KeyObject } from 'node:crypto';
 import { withoutEmpty } from '@rp/config/app-config';
 import { err, ok, type Result } from '@rp/core/result';
+import { blockedAddressList } from '@rp/config/app-config';
 import { z } from 'zod';
 
 export interface WorkerConfig {
@@ -11,6 +12,8 @@ export interface WorkerConfig {
   readonly webhookPrivateKey: KeyObject;
   readonly ingestSource: 'horizon' | 'rpc';
   readonly ingestStartLedger: number | null;
+  /** Wallet screening: OFAC list download (`off` in tests/dev) plus operator-blocked addresses. */
+  readonly sanctions: { readonly source: 'ofac' | 'off'; readonly blocked: readonly string[] };
   /** Subscription jobs run only when a signer is configured (S9). */
   readonly subscriptions: {
     readonly signerUrl: string;
@@ -20,6 +23,8 @@ export interface WorkerConfig {
     readonly keeperAddress: string;
     readonly keeperMinBalanceXlm: number;
     readonly eventsStartLedger: number | null;
+    /** How often the contract-events job polls the RPC (lower = faster, more RPC calls). */
+    readonly eventsIntervalMs: number;
   } | null;
 }
 
@@ -42,6 +47,9 @@ const EnvSchema = z.object({
     .optional(),
   KEEPER_MIN_BALANCE_XLM: z.coerce.number().positive().default(50),
   CONTRACT_EVENTS_START_LEDGER: z.coerce.number().int().positive().optional(),
+  CONTRACT_EVENTS_INTERVAL_MS: z.coerce.number().int().min(1000).max(300_000).default(5000),
+  SANCTIONS_LIST: z.enum(['ofac', 'off']).default('ofac'),
+  BLOCKED_ADDRESSES: blockedAddressList,
 });
 
 export function loadWorkerConfig(
@@ -85,6 +93,7 @@ export function loadWorkerConfig(
       keeperAddress: e.KEEPER_ADDRESS,
       keeperMinBalanceXlm: e.KEEPER_MIN_BALANCE_XLM,
       eventsStartLedger: e.CONTRACT_EVENTS_START_LEDGER ?? null,
+      eventsIntervalMs: e.CONTRACT_EVENTS_INTERVAL_MS,
     };
   }
   return ok({
@@ -96,5 +105,6 @@ export function loadWorkerConfig(
     webhookPrivateKey: key,
     ingestSource: e.INGEST_SOURCE,
     ingestStartLedger: e.INGEST_START_LEDGER ?? null,
+    sanctions: { source: e.SANCTIONS_LIST, blocked: e.BLOCKED_ADDRESSES },
   });
 }

@@ -16,7 +16,7 @@ import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { db } from '../../../packages/db/test/fixtures.js';
 import type { CheckoutDeps } from '../src/checkout/routes.js';
-import { appConfig, harness, signed, type Harness } from './harness.js';
+import { appConfig, BLOCKED_WALLET, harness, signed, type Harness } from './harness.js';
 
 const contractId = StrKey.encodeContract(randomBytes(32));
 const app = {
@@ -117,6 +117,19 @@ describe('subscription checkout (context §11.1)', () => {
     expect(doc.body.textContent).toContain(contractId);
     expect(doc.getElementById('pay-freighter')?.textContent).toBe('Subscribe with Freighter');
     expect(res.headers['content-security-policy']).toContain("'nonce-");
+  });
+
+  it('refuses a blocked wallet with the generic message', async () => {
+    const { token } = await createSubscription();
+    const res = await h.server.inject({
+      method: 'POST',
+      url: `/c/${token}/prepare`,
+      payload: { address: BLOCKED_WALLET },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body)).toMatchObject({
+      error: { code: 'validation_failed', message: 'This wallet cannot be used for payment' },
+    });
   });
 
   it('a failed simulation returns a friendly 400', async () => {

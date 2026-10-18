@@ -39,6 +39,11 @@
       "types": "./dist/logger.d.ts",
       "default": "./dist/logger.js"
     },
+    "./sanctions": {
+      "@rp/source": "./src/sanctions.ts",
+      "types": "./dist/sanctions.d.ts",
+      "default": "./dist/sanctions.js"
+    },
     "./tls-files": {
       "@rp/source": "./src/tls-files.ts",
       "types": "./dist/tls-files.d.ts",

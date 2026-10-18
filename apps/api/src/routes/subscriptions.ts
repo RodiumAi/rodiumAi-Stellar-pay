@@ -16,13 +16,23 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
-import { assertReturnUrl, idempotencyKey, parseBody, requestHash } from '../request.js';
+import {
+  assertCustomerCountry,
+  assertReturnUrl,
+  idempotencyKey,
+  parseBody,
+  requestHash,
+} from '../request.js';
 
 const CreateSubscription = z.object({
   merchant_subscription_ref: z.string().min(1).max(128),
   customer_ref: z.string().min(1).max(256),
   plan_code: z.string().min(1).max(64),
   return_url: z.string().max(2048),
+  customer_country: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
 });
 
 const Id = z.object({ id: z.uuid() });
@@ -49,6 +59,10 @@ export function registerSubscriptionRoutes(app: FastifyInstance, deps: ApiDeps):
     const key = idempotencyKey(req);
     const body = parseBody(req, CreateSubscription);
     assertReturnUrl(body.return_url, deps.api.returnUrlOrigins);
+    assertCustomerCountry(body.customer_country, {
+      blocked: deps.api.blockedCountries,
+      required: deps.api.requireCustomerCountry,
+    });
     const plan = deps.api.plans.find((p) => p.code === body.plan_code);
     if (plan === undefined) throw new ApiError('unknown_plan', `Unknown plan ${body.plan_code}`);
     if (plan.price > deps.app.limits.maxSubscriptionPrice) {

@@ -186,6 +186,29 @@ describe('loadApiConfig', () => {
     expect(r.ok && r.value.awsKmsKeyId).toBe(id);
   });
 
+  it('defaults to OFAC screening and the embargoed-country list', () => {
+    const r = loadApiConfig(valid);
+    expect(r.ok && r.value.sanctions).toEqual({ source: 'ofac', blocked: [] });
+    expect(r.ok && r.value.blockedCountries).toEqual(['CU', 'IR', 'KP', 'SY']);
+    expect(r.ok && r.value.requireCustomerCountry).toBe(false);
+  });
+
+  it('parses the compliance settings, and none turns the country rule off', () => {
+    const wallet = `G${'W'.repeat(55)}`;
+    const r = loadApiConfig({
+      ...valid,
+      SANCTIONS_LIST: 'off',
+      BLOCKED_ADDRESSES: wallet,
+      BLOCKED_COUNTRIES: 'cu, ir, gh',
+      REQUIRE_CUSTOMER_COUNTRY: 'true',
+    });
+    expect(r.ok && r.value.sanctions).toEqual({ source: 'off', blocked: [wallet] });
+    expect(r.ok && r.value.blockedCountries).toEqual(['CU', 'IR', 'GH']);
+    expect(r.ok && r.value.requireCustomerCountry).toBe(true);
+    const none = loadApiConfig({ ...valid, BLOCKED_COUNTRIES: 'none' });
+    expect(none.ok && none.value.blockedCountries).toEqual([]);
+  });
+
   it('rejects a malformed AWS_KMS_KEY_ID', () => {
     expect(loadApiConfig({ ...valid, AWS_KMS_KEY_ID: 'rp-field-kek' }).ok).toBe(false);
   });
@@ -215,6 +238,13 @@ describe('loadApiConfig', () => {
         ]),
       },
       'SUBSCRIPTION_PLANS',
+    ],
+    ['country code too long', { BLOCKED_COUNTRIES: 'GHA' }, 'BLOCKED_COUNTRIES'],
+    ['blocked address not a Stellar account', { BLOCKED_ADDRESSES: '0xabc' }, 'BLOCKED_ADDRESSES'],
+    [
+      'require country not a boolean',
+      { REQUIRE_CUSTOMER_COUNTRY: 'yes' },
+      'REQUIRE_CUSTOMER_COUNTRY',
     ],
     [
       'current data key missing',

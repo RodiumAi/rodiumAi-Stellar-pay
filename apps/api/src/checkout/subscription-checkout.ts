@@ -20,6 +20,7 @@ import { z } from 'zod';
 import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
 import { parseBody } from '../request.js';
+import { assertWalletAllowed } from './wallet-screen.js';
 import {
   checkoutFooter,
   checkoutHeader,
@@ -132,6 +133,7 @@ export async function prepareSubscription(
   if (!parseStellarAddress(address).ok || !StrKey.isValidEd25519PublicKey(address)) {
     throw new ApiError('validation_failed', 'Invalid wallet address');
   }
+  assertWalletAllowed(deps, req, address);
   const { network, limits } = deps.app;
   try {
     const built = await buildSubscribeTransaction(client, {

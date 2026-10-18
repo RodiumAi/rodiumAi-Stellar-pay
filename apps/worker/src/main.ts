@@ -6,6 +6,7 @@ import { resolveSecretFiles } from '@rp/config/secret-files';
 import { cryptoRandomBytes } from '@rp/core/random';
 import { createDb, createPool } from '@rp/db/connection';
 import { createLogger } from '@rp/security/logger';
+import { createSanctionsScreen } from '@rp/security/sanctions';
 import { createTlsFiles } from '@rp/security/tls-files';
 import { startTracing } from '@rp/telemetry/tracing';
 import { createHorizonSource } from '@rp/stellar/horizon-source';
@@ -77,6 +78,14 @@ async function main(): Promise<void> {
           server,
         );
 
+  const screen = createSanctionsScreen({
+    source: cfg.value.sanctions.source,
+    blocked: cfg.value.sanctions.blocked,
+    logger,
+  });
+  const stopScreen = screen.start();
+  const isBlocked = (address: string): boolean => screen.isBlocked(address);
+
   const ingest = createIngestJob({
     db,
     // Unique per replica: pod name (HOSTNAME in Kubernetes) + pid + random suffix.
@@ -86,6 +95,7 @@ async function main(): Promise<void> {
     startLedger: cfg.value.ingestStartLedger,
     metrics,
     logger,
+    isBlocked,
   });
   const subscriptionJobs: Job[] = [];
   let certExpiry: (() => number) | null = null;
@@ -103,14 +113,17 @@ async function main(): Promise<void> {
     certExpiry = () => tls.current().notAfterSeconds;
     const chain = { contractId: network.subscriptionContractId, keeper: subs.keeperAddress };
     subscriptionJobs.push(
-      createContractEventsJob({
-        db,
-        client: server,
-        contractId: chain.contractId,
-        startLedger: subs.eventsStartLedger,
-        metrics,
-        logger,
-      }),
+      createContractEventsJob(
+        {
+          db,
+          client: server,
+          contractId: chain.contractId,
+          startLedger: subs.eventsStartLedger,
+          metrics,
+          logger,
+        },
+        subs.eventsIntervalMs,
+      ),
       createChargeJob({
         db,
         chain: server,
@@ -156,7 +169,7 @@ async function main(): Promise<void> {
       ...subscriptionJobs,
       ingest,
       createStatsJob({ db, metrics, certNotAfter: certExpiry }),
-      createReconcileJob({ db, source, rules, logger, metrics }),
+      createReconcileJob({ db, source, rules, logger, metrics, isBlocked }),
       createExpireJob({ db, now: () => new Date(), randomBytes: cryptoRandomBytes }),
       createDispatchJob({
         db,
@@ -186,6 +199,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'stopping: no new claims, draining in-flight work');
     void scheduler.stop(SHUTDOWN_GRACE_MS).then(async ({ drained }) => {
       logger.info({ drained }, 'scheduler stopped');
+      stopScreen();
       await ingest.release();
       http.close();
       await Promise.all([pool.end(), tracing.shutdown()]);

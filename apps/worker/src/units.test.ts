@@ -191,7 +191,39 @@ describe('loadWorkerConfig', () => {
       'garbage PEM',
       { WEBHOOK_SIGNING_KEY_PEM: '-----BEGIN PRIVATE KEY-----\\nnope\\n-----END PRIVATE KEY-----' },
     ],
+    ['events interval below 1 s', { CONTRACT_EVENTS_INTERVAL_MS: '500' }],
+    ['events interval above 5 min', { CONTRACT_EVENTS_INTERVAL_MS: '300001' }],
+    ['unknown sanctions source', { SANCTIONS_LIST: 'eu' }],
+    ['a blocked address that is not a Stellar account', { BLOCKED_ADDRESSES: '0xabc' }],
   ])('rejects %s', (_n, override) => {
     expect(loadWorkerConfig({ ...valid, ...override }).ok).toBe(false);
+  });
+
+  const signer = {
+    SIGNER_URL: 'https://localhost:9443',
+    WORKER_TLS_KEY: '/tls/key',
+    WORKER_TLS_CERT: '/tls/cert',
+    WORKER_TLS_CA: '/tls/ca',
+    KEEPER_ADDRESS: `G${'K'.repeat(55)}`,
+  };
+
+  it('polls contract events every 5 s by default and accepts a slower interval', () => {
+    const d = loadWorkerConfig({ ...valid, ...signer });
+    expect(d.ok && d.value.subscriptions?.eventsIntervalMs).toBe(5000);
+    const slow = loadWorkerConfig({ ...valid, ...signer, CONTRACT_EVENTS_INTERVAL_MS: '30000' });
+    expect(slow.ok && slow.value.subscriptions?.eventsIntervalMs).toBe(30_000);
+  });
+
+  it('screens against OFAC by default and parses the block list', () => {
+    const d = loadWorkerConfig(valid);
+    expect(d.ok && d.value.sanctions).toEqual({ source: 'ofac', blocked: [] });
+    const a = `G${'A'.repeat(55)}`;
+    const b = `G${'B'.repeat(55)}`;
+    const r = loadWorkerConfig({
+      ...valid,
+      SANCTIONS_LIST: 'off',
+      BLOCKED_ADDRESSES: ` ${a}, ${b} `,
+    });
+    expect(r.ok && r.value.sanctions).toEqual({ source: 'off', blocked: [a, b] });
   });
 });

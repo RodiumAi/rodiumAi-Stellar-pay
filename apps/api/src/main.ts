@@ -7,6 +7,7 @@ import { createAwsKms } from '@rp/security/aws-kms';
 import { loadKeyring } from '@rp/security/envelope';
 import { createLocalDevKms, type Kms } from '@rp/security/kms';
 import { createLogger } from '@rp/security/logger';
+import { createSanctionsScreen } from '@rp/security/sanctions';
 import { startTracing } from '@rp/telemetry/tracing';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
@@ -117,6 +118,13 @@ async function main(): Promise<void> {
     logger.warn({ err: error }, 'documentation site not found; serving the API only');
   }
 
+  const screen = createSanctionsScreen({
+    source: api.value.sanctions.source,
+    blocked: api.value.sanctions.blocked,
+    logger,
+  });
+  screen.start();
+
   const server = buildServer(
     {
       app: app.value,
@@ -129,6 +137,7 @@ async function main(): Promise<void> {
       randomBytes: cryptoRandomBytes,
       now: () => new Date(),
       logger,
+      isBlockedWallet: (address) => screen.isBlocked(address),
       health: {
         database: async () => (await sql`select 1 as ok`.execute(db)).rows.length === 1,
         redis: () => kv.ping(),

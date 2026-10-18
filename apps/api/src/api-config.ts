@@ -1,6 +1,6 @@
 import { parseAmount, type Stroops } from '@rp/core/money/stroops';
 import { err, ok, type Result } from '@rp/core/result';
-import { withoutEmpty } from '@rp/config/app-config';
+import { blockedAddressList, withoutEmpty } from '@rp/config/app-config';
 import { z } from 'zod';
 
 export interface Plan {
@@ -31,7 +31,16 @@ export interface ApiConfig {
   /** AWS KMS key id/ARN/alias wrapping the field data keys (staging/production). */
   readonly awsKmsKeyId: string | null;
   readonly localDevKmsMasterKey: Uint8Array | null;
+  /** Wallet screening: OFAC list download (`off` in tests/dev) plus operator-blocked addresses. */
+  readonly sanctions: { readonly source: 'ofac' | 'off'; readonly blocked: readonly string[] };
+  /** Countries (ISO 3166-1 alpha-2) refused when the integrator sends `customer_country`. */
+  readonly blockedCountries: readonly string[];
+  /** Reject create requests that omit `customer_country`. */
+  readonly requireCustomerCountry: boolean;
 }
+
+/** Comprehensively embargoed jurisdictions (US sanctions programmes). */
+export const DEFAULT_BLOCKED_COUNTRIES = 'CU,IR,KP,SY';
 
 const b64urlKey = (min: number) =>
   z
@@ -109,6 +118,25 @@ const EnvSchema = z.object({
     )
     .optional(),
   LOCAL_DEV_KMS_MASTER_KEY: b64urlKey(32).optional(),
+  SANCTIONS_LIST: z.enum(['ofac', 'off']).default('ofac'),
+  BLOCKED_ADDRESSES: blockedAddressList,
+  // `none` turns the country rule off (an empty value means "not set" and keeps the default).
+  BLOCKED_COUNTRIES: z
+    .string()
+    .default(DEFAULT_BLOCKED_COUNTRIES)
+    .transform((v) =>
+      v.trim().toLowerCase() === 'none'
+        ? []
+        : v
+            .split(',')
+            .map((c) => c.trim().toUpperCase())
+            .filter(Boolean),
+    )
+    .pipe(z.array(z.string().regex(/^[A-Z]{2}$/, 'must be ISO 3166-1 alpha-2 codes'))),
+  REQUIRE_CUSTOMER_COUNTRY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export function loadApiConfig(
@@ -152,5 +180,8 @@ export function loadApiConfig(
     },
     awsKmsKeyId: e.AWS_KMS_KEY_ID ?? null,
     localDevKmsMasterKey: e.LOCAL_DEV_KMS_MASTER_KEY ?? null,
+    sanctions: { source: e.SANCTIONS_LIST, blocked: e.BLOCKED_ADDRESSES },
+    blockedCountries: e.BLOCKED_COUNTRIES,
+    requireCustomerCountry: e.REQUIRE_CUSTOMER_COUNTRY,
   });
 }

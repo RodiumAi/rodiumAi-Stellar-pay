@@ -16,6 +16,7 @@ import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
 import { parseBody } from '../request.js';
 import { applyCheckoutHeaders, newNonce } from './headers.js';
+import { assertWalletAllowed } from './wallet-screen.js';
 import { renderPaymentPage, type PageAssets } from './page.js';
 import {
   prepareSubscription,
@@ -264,6 +265,7 @@ export function registerCheckoutRoutes(
       if (!parseStellarAddress(address).ok || !StrKey.isValidEd25519PublicKey(address)) {
         throw new ApiError('validation_failed', 'Invalid wallet address');
       }
+      assertWalletAllowed(deps, req, address);
       const res = await checkout.horizonFetch(
         `${horizon}/accounts/${encodeURIComponent(address)}`,
         {
