@@ -1,0 +1,7 @@
+# Accepted findings, each with a reason and an expiry: once the date passes the finding
+# fails the build again, so a missed upstream patch cannot be ignored forever.
+
+# libssl3 in gcr.io/distroless/cc-debian12 (DTLS handshake disclosure). The services never
+# load it: the Node binary links OpenSSL statically and none of them speak DTLS. Fixed in
+# Debian 3.0.22-1~deb12u2; remove this entry when distroless publishes a patched digest.
+CVE-2026-84782 exp:2026-11-10
