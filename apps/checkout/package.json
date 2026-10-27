@@ -7,7 +7,7 @@
     "@stellar/freighter-api": "6.0.1"
   },
   "devDependencies": {
-    "vite": "8.3.2"
+    "vite": "8.3.4"
   },
   "scripts": {
     "build": "vite build"

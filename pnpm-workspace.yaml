@@ -8,3 +8,8 @@ minimumReleaseAge: 20160
 strictPeerDependencies: true
 # Lifecycle scripts are blocked unless the package is listed here.
 onlyBuiltDependencies: []
+# Accepted advisories. undici reaches the tree only through jsdom in unit tests (never in
+# an image); the fix (8.12.2) clears minimumReleaseAge on 2026-10-29, then drop this entry.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-xjj6-f33q-929c

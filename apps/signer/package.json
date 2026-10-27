@@ -10,7 +10,7 @@
     "@rp/stellar": "workspace:*",
     "@stellar/stellar-sdk": "17.2.1",
     "pino": "10.3.1",
-    "zod": "4.6.5"
+    "zod": "4.6.7"
   },
   "scripts": {
     "start": "node --permission --allow-fs-read=. dist/main.js"
