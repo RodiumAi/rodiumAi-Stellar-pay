@@ -1,0 +1,4 @@
+# Mirrors contracts/deny.toml: crypto-bigint 0.5 timing leaks, via soroban-env-host's
+# elliptic-curve 0.13 (also in SDK 29). Host/test-only, absent from the wasm32v1-none build.
+[advisories]
+ignore = ["RUSTSEC-2026-0387"]
