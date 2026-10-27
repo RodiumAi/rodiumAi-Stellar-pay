@@ -3,3 +3,15 @@
 [[IgnoredVulns]]
 id = "RUSTSEC-2024-0436"
 reason = "transitive via soroban-env-host; not in contract WASM; re-check on SDK upgrades"
+
+# crypto-bigint 0.5 timing leaks, via soroban-env-host's elliptic-curve 0.13 (also in SDK 29).
+# Host/test-only, absent from the wasm32v1-none build; fixed only in 0.7.6+.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0387"
+reason = "transitive via soroban-env-host; not in contract WASM; re-check on SDK upgrades"
+
+# block-buffer 0.10 panic handling, via digest 0.10 in soroban-sdk-macros (compile time) and
+# soroban-env-host (host/test-only); not in contract WASM. Fixed only in 0.12.1.
+[[IgnoredVulns]]
+id = "GHSA-qwgh-2vcv-g2f7"
+reason = "build-time macros and soroban-env-host only; not in contract WASM; re-check on SDK upgrades"
