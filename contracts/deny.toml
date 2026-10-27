@@ -8,6 +8,9 @@ ignore = [
   # Unmaintained (not a vulnerability) proc-macro pulled in by soroban-env-host via
   # ark-ff; host/test-only, absent from the wasm32v1-none build. Re-check on SDK upgrades.
   { id = "RUSTSEC-2024-0436", reason = "transitive via soroban-env-host; not in contract WASM" },
+  # crypto-bigint 0.5 timing leaks, via soroban-env-host's elliptic-curve 0.13 (also in SDK 29).
+  # Host/test-only, absent from the wasm32v1-none build; fixed only in 0.7.6+.
+  { id = "RUSTSEC-2026-0387", reason = "transitive via soroban-env-host; not in contract WASM" },
 ]
 
 [licenses]
