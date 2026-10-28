@@ -192,6 +192,7 @@ Rules:
 - Multiple receipts with the same memo accumulate. Confirmation happens when the sum reaches the amount due.
 - Overpayment confirms the payment and records the excess for refund review; it never silently disappears.
 - A receipt for an unknown memo, a missing memo, or a wrong asset is stored as `unmatched` and raises an alert.
+- Native XLM below 0.1 XLM is ignored as dust (address-poisoning spam), not stored or alerted.
 - Transitions are conditional updates (`UPDATE ... WHERE status = $expected RETURNING`). A transition that affects zero rows is a no-op, never an error to retry blindly.
 
 ### Subscription

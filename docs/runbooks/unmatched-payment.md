@@ -14,6 +14,9 @@ Money reached the merchant account but the ingester could not tie it to a paymen
   `reason` (`no_memo`, `unknown_memo`, `invalid_transition` for a refunded payment, `wrong_asset`,
   `non_text_memo`) or `unparseable_amount`. The reason is **only in the log**, not in the table.
 - `unparseable_amount` receipts are logged with `tx_hash` but not stored; look them up on Horizon.
+- XLM under 0.1 XLM is ignored as dust and never appears here. It is usually address poisoning:
+  a sender address that mimics a real one, planted in the merchant's history. Never copy a
+  destination from transaction history; take it from the receipt row or the recipient's own page.
 
 ## Before you start
 
