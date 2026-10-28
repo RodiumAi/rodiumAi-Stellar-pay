@@ -30,6 +30,9 @@ const env = resolveSecretFiles(process.env);
 if (!env.ok) fail(env.error);
 const app = loadConfig(env.value);
 if (!app.ok) fail(app.error.issues);
+const contractId = app.value.network.subscriptionContractId;
+// The signer exists only for subscription charges, so it is useless without the contract.
+if (contractId === null) fail(['SUBSCRIPTION_CONTRACT_ID: required by the signer']);
 const parsed = Env.safeParse(withoutEmpty(env.value));
 if (!parsed.success) fail(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
 const e = parsed.data;
@@ -53,7 +56,7 @@ const signer = createSigner({
   rules: {
     networkPassphrase: app.value.network.passphrase,
     maxFeeStroops: app.value.network.maxSorobanFeeStroops,
-    contractId: app.value.network.subscriptionContractId,
+    contractId,
   },
   tls: tlsFiles.current(),
   logger,

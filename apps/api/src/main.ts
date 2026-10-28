@@ -40,6 +40,8 @@ async function main(): Promise<void> {
   if (!app.ok) fail(app.error.issues);
   const api = loadApiConfig(env.value);
   if (!api.ok) fail(api.error);
+  if (api.value.plans.length > 0 && app.value.network.subscriptionContractId === null)
+    fail(['SUBSCRIPTION_CONTRACT_ID: required when SUBSCRIPTION_PLANS lists plans']);
   const logger = createLogger({ level: app.value.logLevel, service: 'api' });
   const tracing = startTracing({ service: 'rp-api', env: env.value });
 

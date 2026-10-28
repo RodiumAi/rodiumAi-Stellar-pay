@@ -50,7 +50,8 @@ const EnvSchema = z
     RP_STELLAR_RPC_URL: httpsUrl.optional(),
     RP_STELLAR_HORIZON_URL: httpsUrl.optional(),
     MERCHANT_ADDRESS: strkey('G'),
-    SUBSCRIPTION_CONTRACT_ID: strkey('C'),
+    // Optional: a one-time-payments-only deployment has no subscription contract.
+    SUBSCRIPTION_CONTRACT_ID: strkey('C').optional(),
     MAX_FEE_STROOPS: z
       .string()
       .regex(/^[1-9][0-9]{0,9}$/)
@@ -130,7 +131,7 @@ export function loadConfig(
       horizonUrl: e.RP_STELLAR_HORIZON_URL ?? constants.defaultHorizonUrl,
       usdc: constants.usdc,
       merchant: e.MERCHANT_ADDRESS as NetworkConfig['merchant'],
-      subscriptionContractId: e.SUBSCRIPTION_CONTRACT_ID,
+      subscriptionContractId: e.SUBSCRIPTION_CONTRACT_ID ?? null,
       maxFeeStroops: e.MAX_FEE_STROOPS,
       maxSorobanFeeStroops: e.MAX_SOROBAN_FEE_STROOPS,
     },

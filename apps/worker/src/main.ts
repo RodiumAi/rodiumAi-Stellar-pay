@@ -101,6 +101,8 @@ async function main(): Promise<void> {
   let certExpiry: (() => number) | null = null;
   const subs = cfg.value.subscriptions;
   if (subs !== null) {
+    const contractId = network.subscriptionContractId;
+    if (contractId === null) fail(['SUBSCRIPTION_CONTRACT_ID: required when SIGNER_URL is set']);
     const tls = createTlsFiles({
       keyPath: subs.tlsKeyPath,
       certPath: subs.tlsCertPath,
@@ -111,7 +113,7 @@ async function main(): Promise<void> {
     });
     const signer = createSignerClient({ url: subs.signerUrl, tls: () => tls.current() });
     certExpiry = () => tls.current().notAfterSeconds;
-    const chain = { contractId: network.subscriptionContractId, keeper: subs.keeperAddress };
+    const chain = { contractId, keeper: subs.keeperAddress };
     subscriptionJobs.push(
       createContractEventsJob(
         {
