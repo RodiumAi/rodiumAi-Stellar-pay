@@ -5,7 +5,7 @@
 # Base images are pinned by digest; Renovate proposes updates and a weekly CI rebuild
 # picks up patched layers.
 
-FROM docker.io/library/node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS build
+FROM docker.io/library/node:24.22.1-bookworm-slim@sha256:be8204d4bd327363357f532187b752ff62759c31bedf98e9e18fc08c9cbd605c AS build
 ENV CI=true PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN corepack enable && corepack prepare pnpm@10.34.6 --activate
 WORKDIR /src
@@ -35,7 +35,7 @@ RUN for app in api worker signer; do \
  && cp -r apps/docs/dist /out/api/docs
 
 # distroless/cc (glibc + libstdc++, no shell) plus the exact Node binary from the build
-# image: distroless/nodejs24 lagged behind (24.14.0 vs the pinned 24.21.0).
+# image: distroless/nodejs24 lagged behind (24.14.0 vs the pinned 24.21.0 at the time).
 FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f AS runtime
 COPY --from=build /usr/local/bin/node /nodejs/bin/node
 WORKDIR /app

@@ -6,7 +6,7 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 
 | Item           | Pinned  | Published  | Newest seen          | Note                                                         |
 | -------------- | ------- | ---------- | -------------------- | ------------------------------------------------------------ |
-| Node.js 24 LTS | 24.21.0 | 2026-09-07 | 24.22.0 (2026-10-14) | newest is < 14 days                                          |
+| Node.js 24 LTS | 24.22.1 | 2026-10-20 | 24.22.1 (2026-10-20) | security release (4 high CVEs): adopted before 14 days, the one exception to the rule |
 | pnpm 10        | 10.34.6 | 2026-09-28 | 10.34.7 (2026-10-12) | newest is < 14 days                                          |
 | Rust           | 1.98.0  | 2026-08-18 | —                    | `contracts/rust-toolchain.toml`                              |
 | stellar-cli    | 28.1.0  | 2026-09-26 | —                    | prebuilt binary, sha256 matched to the GitHub release digest |
