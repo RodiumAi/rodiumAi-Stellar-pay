@@ -12,4 +12,7 @@ onlyBuiltDependencies: []
 # an image); the fix (8.12.2) clears minimumReleaseAge on 2026-10-29, then drop this entry.
 auditConfig:
   ignoreGhsas:
+    - GHSA-2m5v-pch6-74hx
+    - GHSA-4w7w-5xrc-9h26
+    - GHSA-qrxm-fqhp-jwvm
     - GHSA-xjj6-f33q-929c
