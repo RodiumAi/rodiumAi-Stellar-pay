@@ -22,7 +22,8 @@ export interface NetworkConfig {
   readonly horizonUrl: string;
   readonly usdc: NetworkConstants['usdc'];
   readonly merchant: StellarAddress;
-  readonly subscriptionContractId: string;
+  /** `null` when subscriptions are not deployed (one-time payments only). */
+  readonly subscriptionContractId: string | null;
   /** Cap for classic transactions (one-time payments). */
   readonly maxFeeStroops: bigint;
   /** Cap for Soroban transactions: inclusion + resource fee (subscribe, charge, TTL). */

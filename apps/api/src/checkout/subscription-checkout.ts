@@ -111,6 +111,16 @@ function liveUntilOf(tx: Transaction): number | null {
   return typeof value === 'number' ? value : null;
 }
 
+/**
+ * Subscriptions only exist when plans are configured, and the API refuses to start with plans
+ * but no contract, so this guards a state that should not occur.
+ */
+export function subscriptionContract(deps: ApiDeps): string {
+  const id = deps.app.network.subscriptionContractId;
+  if (id === null) throw new ApiError('subscription_not_found', 'Subscriptions are not enabled');
+  return id;
+}
+
 export function subscriptionStatusBody(s: SubscriptionRow): string {
   const final = s.status !== 'incomplete';
   return JSON.stringify({
@@ -137,7 +147,7 @@ export async function prepareSubscription(
   const { network, limits } = deps.app;
   try {
     const built = await buildSubscribeTransaction(client, {
-      contractId: network.subscriptionContractId,
+      contractId: subscriptionContract(deps),
       subscriber: address,
       planId: sub.contract_plan_id,
       periods: limits.subscriptionApprovePeriods,
@@ -181,7 +191,7 @@ export async function submitSubscription(
     networkPassphrase: network.passphrase,
     maxFeeStroops: network.maxSorobanFeeStroops,
     nowSeconds: Math.floor(deps.now().getTime() / 1000),
-    contractId: network.subscriptionContractId,
+    contractId: subscriptionContract(deps),
     planId: sub.contract_plan_id,
     periods: limits.subscriptionApprovePeriods,
     subscriber,

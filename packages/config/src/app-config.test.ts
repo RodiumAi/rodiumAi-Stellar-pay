@@ -46,6 +46,15 @@ describe('loadConfig', () => {
     expect(result.ok && result.value.network.horizonUrl).toBe('https://horizon.stellar.org');
   });
 
+  it('allows a deployment without a subscription contract (one-time payments only)', () => {
+    const result = loadConfig({ ...valid, SUBSCRIPTION_CONTRACT_ID: undefined });
+    expect(result.ok && result.value.network.subscriptionContractId).toBeNull();
+    const withContract = loadConfig(valid);
+    expect(withContract.ok && withContract.value.network.subscriptionContractId).toBe(
+      valid.SUBSCRIPTION_CONTRACT_ID,
+    );
+  });
+
   it('treats empty values as unset (defaults apply)', () => {
     const result = loadConfig({
       ...valid,

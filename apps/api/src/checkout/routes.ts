@@ -22,6 +22,7 @@ import {
   prepareSubscription,
   renderSubscriptionPage,
   submitSubscription,
+  subscriptionContract,
   subscriptionStatusBody,
   type SubscriptionChainClient,
 } from './subscription-checkout.js';
@@ -174,7 +175,7 @@ export function registerCheckoutRoutes(
             price: formatAmount(sub.price_stroops as Stroops),
             intervalSeconds: sub.interval_seconds,
             periods: deps.app.limits.subscriptionApprovePeriods,
-            contractId: network.subscriptionContractId,
+            contractId: subscriptionContract(deps),
             networkName: network.name === 'mainnet' ? 'Stellar' : `Stellar ${network.name}`,
             data: {
               kind: 'subscription',
