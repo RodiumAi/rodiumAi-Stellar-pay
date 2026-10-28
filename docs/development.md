@@ -38,7 +38,7 @@ RodiumAI app ──HMAC API──▶ API ──▶ Supabase Postgres / Upstash R
 
 ## Requirements
 
-- Node.js **24.21.0** and pnpm **10.34.6** (`engine-strict` rejects other versions; `.nvmrc` is set)
+- Node.js **24.22.1** and pnpm **10.34.6** (`engine-strict` rejects other versions; `.nvmrc` is set)
 - Docker (Colima works) for the local database, Redis and Stellar Quickstart
 - [Supabase CLI](https://supabase.com/docs/guides/cli) for the local Postgres
 - For the contract: Rust 1.98.0 (`contracts/rust-toolchain.toml`) and stellar-cli 28.1.0
@@ -47,7 +47,7 @@ RodiumAI app ──HMAC API──▶ API ──▶ Supabase Postgres / Upstash R
 ## Quick start (local)
 
 ```sh
-nvm use                       # Node 24.21.0
+nvm use                       # Node 24.22.1
 corepack enable               # pnpm 10.34.6
 pnpm install
 cp .env.example .env && chmod 600 .env
