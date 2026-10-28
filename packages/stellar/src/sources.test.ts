@@ -105,6 +105,24 @@ describe('Horizon records → classification (context §13.2)', () => {
       { kind: 'unmatched', reason: 'wrong_asset', amount: 199_900_000n },
     ],
     [
+      'native XLM dust (address poisoning)',
+      { asset_type: 'native', asset_code: undefined, asset_issuer: undefined, amount: '0.0001000' },
+      {},
+      { kind: 'ignored', reason: 'dust' },
+    ],
+    [
+      'native XLM at the dust limit',
+      { asset_type: 'native', asset_code: undefined, asset_issuer: undefined, amount: '0.1000000' },
+      {},
+      { kind: 'unmatched', reason: 'wrong_asset', amount: 1_000_000n },
+    ],
+    [
+      'tiny USDC is never dust',
+      { amount: '0.0000001' },
+      {},
+      { kind: 'eligible', amount: 1n, memo: 'RP0123456789AB' },
+    ],
+    [
       'id memo',
       {},
       { memo_type: 'id', memo: '42' },

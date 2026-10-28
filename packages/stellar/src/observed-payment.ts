@@ -41,8 +41,16 @@ export type Classification =
   /** Not a receipt for one-time payment matching. */
   | {
       readonly kind: 'ignored';
-      readonly reason: 'failed' | 'not_to_merchant' | 'contract_transfer';
+      readonly reason: 'failed' | 'not_to_merchant' | 'contract_transfer' | 'dust';
     };
+
+/**
+ * Native XLM below this (0.1 XLM) is spam, typically address poisoning: a lookalike sender
+ * planted in the merchant's history. Storing each one as unmatched would bury real mistakes
+ * (a customer paying XLM instead of USDC) under alerts. Other assets cannot arrive as dust:
+ * the merchant holds a trustline only to USDC.
+ */
+export const XLM_DUST_STROOPS = 1_000_000n;
 
 /** Context §13.2: only successful USDC (code AND issuer) credits to the merchant count. */
 export function classifyPayment(p: ObservedPayment, rules: MatchingRules): Classification {
@@ -59,6 +67,9 @@ export function classifyPayment(p: ObservedPayment, rules: MatchingRules): Class
   const amount = parseAmount(p.amount);
   if (!amount.ok) {
     return { kind: 'unmatched', reason: 'unparseable_amount', amount: null };
+  }
+  if (p.asset === null && amount.value < XLM_DUST_STROOPS) {
+    return { kind: 'ignored', reason: 'dust' };
   }
   if (p.asset?.code !== rules.usdc.code || p.asset.issuer !== rules.usdc.issuer) {
     return { kind: 'unmatched', reason: 'wrong_asset', amount: amount.value };
