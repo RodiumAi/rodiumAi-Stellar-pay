@@ -9,23 +9,30 @@
 //                        (Dashboard → Database → Settings → SSL Configuration → Download)
 // Idempotent: re-running keeps the generated passwords (RP_SUPABASE_*_PASSWORD in .env)
 // unless ROTATE=1 is set, in which case new passwords are generated and applied.
+// ENV_FILE=.env.production uses another (git-ignored) file instead of .env, so a production
+// project's credentials never mix with local development.
 import { randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { bootstrapRoles, migrate } from '../src/migrate.ts';
 
+const envFile = process.env.ENV_FILE ?? '.env';
 process.chdir(new URL('../../../', import.meta.url).pathname);
-if (!existsSync('.env')) throw new Error('No .env — run `cp .env.example .env` first');
-process.loadEnvFile('.env');
+if (!/^\.env(\.[a-z0-9-]+)?$/.test(envFile))
+  throw new Error('ENV_FILE must be .env or .env.<name>');
+if (!existsSync(envFile))
+  throw new Error(`No ${envFile} — create it first (see README → Supabase)`);
+process.loadEnvFile(envFile);
 const env = process.env;
 
 const fail = (msg) => {
   console.error(`✗ ${msg}`);
   process.exit(1);
 };
-if (!env.SUPABASE_DB_URL) fail('SUPABASE_DB_URL is not set in .env (see README → Supabase)');
-if (!env.SUPABASE_CA_CERT) fail('SUPABASE_CA_CERT is not set in .env (see README → Supabase)');
+if (!env.SUPABASE_DB_URL) fail(`SUPABASE_DB_URL is not set in ${envFile} (see README → Supabase)`);
+if (!env.SUPABASE_CA_CERT)
+  fail(`SUPABASE_CA_CERT is not set in ${envFile} (see README → Supabase)`);
 const caPath = resolve(env.SUPABASE_CA_CERT);
 if (!existsSync(caPath)) fail(`SUPABASE_CA_CERT: no file at ${env.SUPABASE_CA_CERT}`);
 
@@ -46,7 +53,7 @@ const host = admin.hostname;
 const ca = readFileSync(caPath, 'utf8');
 const ssl = { ca, rejectUnauthorized: true, servername: host };
 
-// Fresh 32-byte passwords, kept in .env so a re-run is a no-op.
+// Fresh 32-byte passwords, kept in the env file so a re-run is a no-op.
 const names = ['owner', 'api', 'worker', 'readonly'];
 const key = (n) => `RP_SUPABASE_${n.toUpperCase()}_PASSWORD`;
 const rotate = env.ROTATE === '1';
@@ -137,11 +144,11 @@ const urls = {
 };
 const values = { ...urls, ...Object.fromEntries(names.map((n) => [key(n), passwords[n]])) };
 
-const backup = `.env.bak-${new Date().toISOString().replace(/[:.]/g, '')}`;
-copyFileSync('.env', backup);
+const backup = `${envFile}.bak-${new Date().toISOString().replace(/[:.]/g, '')}`;
+copyFileSync(envFile, backup);
 writeFileSync(backup, readFileSync(backup), { mode: 0o600 });
 const seen = new Set();
-const lines = readFileSync('.env', 'utf8')
+const lines = readFileSync(envFile, 'utf8')
   .split('\n')
   .map((line) => {
     const m = /^([A-Z0-9_]+)=/.exec(line);
@@ -152,8 +159,8 @@ const lines = readFileSync('.env', 'utf8')
 const missing = Object.keys(values).filter((k) => !seen.has(k));
 if (missing.length > 0)
   lines.push('', '# Supabase (pnpm db:setup:supabase)', ...missing.map((k) => `${k}=${values[k]}`));
-writeFileSync('.env', lines.join('\n').replace(/\n*$/, '\n'), { mode: 0o600 });
-console.log(`✓ .env updated (previous version saved as ${backup}, mode 600)`);
+writeFileSync(envFile, lines.join('\n').replace(/\n*$/, '\n'), { mode: 0o600 });
+console.log(`✓ ${envFile} updated (previous version saved as ${backup}, mode 600)`);
 
 // 5. Each service role connects through its pooler and sees the schema.
 for (const [name, role] of [

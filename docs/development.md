@@ -97,6 +97,9 @@ project (staging or production):
    role passwords.
    If the project's session pooler (5432) does not answer, setup uses the transaction pooler
    (6543) automatically — nothing in the service needs session mode.
+   For a second project (e.g. production), put its `SUPABASE_DB_URL` and `SUPABASE_CA_CERT`
+   in a separate git-ignored file and run `ENV_FILE=.env.production pnpm db:setup:supabase`;
+   the passwords and URLs are written to that file, and `.env` is left untouched.
 5. Start the services as usual (`pnpm api:start`, …) — they now use the cloud project.
 
 In Kubernetes the URLs come from AWS Secrets Manager (`rodium-pay/*/DATABASE_URL_*`, mounted
