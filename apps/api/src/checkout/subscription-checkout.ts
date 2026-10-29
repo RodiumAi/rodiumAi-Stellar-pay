@@ -20,6 +20,7 @@ import { z } from 'zod';
 import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
 import { parseBody } from '../request.js';
+import { SUBMIT_FAILED } from './submit-errors.js';
 import { assertWalletAllowed } from './wallet-screen.js';
 import {
   checkoutFooter,
@@ -226,7 +227,12 @@ export async function submitSubscription(
       { subscription_id: sub.id, detail: outcome.detail },
       'subscribe transaction failed',
     );
-    throw new ApiError('submit_failed', 'The network rejected the transaction');
+    throw new ApiError(
+      'submit_failed',
+      outcome.detail === 'TRY_AGAIN_LATER'
+        ? 'The network is busy right now. Try again in a moment.'
+        : SUBMIT_FAILED,
+    );
   }
   if (outcome.status === 'pending' || typeof outcome.returnValue !== 'bigint') {
     return reply.send({ hash: outcome.hash, status: 'submitted' });

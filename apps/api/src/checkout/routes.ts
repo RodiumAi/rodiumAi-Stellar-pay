@@ -16,6 +16,7 @@ import type { ApiDeps } from '../deps.js';
 import { ApiError } from '../errors.js';
 import { parseBody } from '../request.js';
 import { applyCheckoutHeaders, newNonce } from './headers.js';
+import { submitFailureMessage } from './submit-errors.js';
 import { assertWalletAllowed } from './wallet-screen.js';
 import { renderPaymentPage, type PageAssets } from './page.js';
 import {
@@ -352,7 +353,7 @@ export function registerCheckoutRoutes(
           { payment_id: payment.id, result_codes: detail.extras?.result_codes },
           'network rejected transaction',
         );
-        throw new ApiError('submit_failed', 'The network rejected the transaction');
+        throw new ApiError('submit_failed', submitFailureMessage(detail.extras?.result_codes));
       }
       return reply.send({ hash: guard.value.hash, status: 'submitted' });
     });

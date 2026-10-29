@@ -34,6 +34,7 @@ const app = {
 
 const horizonCalls: { url: string; init?: RequestInit }[] = [];
 let horizonSubmitStatus = 200;
+let horizonResultCodes: unknown = { transaction: 'tx_failed' };
 const horizonFetch = vi.fn<typeof fetch>((input, init) => {
   const url = input instanceof Request ? input.url : input.toString();
   horizonCalls.push({ url, ...(init === undefined ? {} : { init }) });
@@ -47,7 +48,7 @@ const horizonFetch = vi.fn<typeof fetch>((input, init) => {
         JSON.stringify(
           horizonSubmitStatus === 200
             ? { hash: 'x' }
-            : { extras: { result_codes: { transaction: 'tx_failed' } } },
+            : { extras: { result_codes: horizonResultCodes } },
         ),
         {
           status: horizonSubmitStatus,
@@ -292,6 +293,40 @@ describe('prepare → sign → submit', () => {
     });
     expect(again.statusCode).toBe(409);
     expect(horizonCalls.filter((c) => c.url.endsWith('/transactions')).length - before).toBe(1);
+  });
+
+  it('tells the customer why the network refused the payment', async () => {
+    const { token } = await createPayment();
+    const prepared = await h.server.inject({
+      method: 'POST',
+      url: `/c/${token}/prepare`,
+      payload: { address: user.publicKey() },
+    });
+    const tx = TransactionBuilder.fromXdr(
+      (JSON.parse(prepared.body) as { xdr: string }).xdr,
+      Networks.TESTNET,
+    );
+    if (!('sign' in tx)) throw new Error('bad tx');
+    tx.sign(user);
+    horizonSubmitStatus = 400;
+    horizonResultCodes = { transaction: 'tx_failed', operations: ['op_underfunded'] };
+    try {
+      const res = await h.server.inject({
+        method: 'POST',
+        url: `/c/${token}/submit`,
+        payload: { xdr: tx.toXdr() },
+      });
+      expect(res.statusCode).toBe(422);
+      expect(JSON.parse(res.body)).toMatchObject({
+        error: {
+          code: 'submit_failed',
+          message: "Your wallet doesn't have enough USDC for this payment. Add USDC and try again.",
+        },
+      });
+    } finally {
+      horizonSubmitStatus = 200;
+      horizonResultCodes = { transaction: 'tx_failed' };
+    }
   });
 
   it('refuses a blocked wallet before loading or building anything', async () => {

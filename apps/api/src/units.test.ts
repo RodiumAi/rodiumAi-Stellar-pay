@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { loadApiConfig } from './api-config.js';
+import { SUBMIT_FAILED, submitFailureMessage } from './checkout/submit-errors.js';
 import { createExchangeRateApi } from './fx.js';
 import { createMemoryKv } from './kv.js';
 import { createInProcessLimiter, createUpstashLimiter } from './rate-limit.js';
@@ -265,5 +266,33 @@ describe('loadApiConfig', () => {
       ]),
     });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('submitFailureMessage', () => {
+  it.each<[string, unknown, RegExp]>([
+    [
+      'not enough USDC',
+      { transaction: 'tx_failed', operations: ['op_underfunded'] },
+      /enough USDC/,
+    ],
+    [
+      'no USDC trustline',
+      { transaction: 'tx_failed', operations: ['op_src_no_trust'] },
+      /can't hold USDC/,
+    ],
+    ['not enough XLM for the fee', { transaction: 'tx_insufficient_balance' }, /enough XLM/],
+    ['signed too late', { transaction: 'tx_too_late' }, /too long/],
+    ['stale sequence', { transaction: 'tx_bad_seq' }, /out-of-date/],
+  ])('explains %s', (_name, codes, message) => {
+    expect(submitFailureMessage(codes)).toMatch(message);
+  });
+
+  it.each<[string, unknown]>([
+    ['no body', undefined],
+    ['an unknown code', { transaction: 'tx_failed', operations: ['op_line_full'] }],
+    ['a malformed body', { transaction: 7, operations: 'op_underfunded' }],
+  ])('falls back to the generic message for %s', (_name, codes) => {
+    expect(submitFailureMessage(codes)).toBe(SUBMIT_FAILED);
   });
 });
