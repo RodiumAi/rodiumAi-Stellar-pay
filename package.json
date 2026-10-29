@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc --build && tsc -p tsconfig.tools.json && tsc -p packages/db/test && tsc -p packages/stellar/test && tsc -p apps/api/test && tsc -p apps/worker/test",
+    "typecheck": "tsc --build && tsc -p tsconfig.tools.json && tsc -p packages/db/test && tsc -p packages/stellar/test && tsc -p apps/api/test && tsc -p apps/worker/test && tsc -p apps/admin/test",
     "test": "vitest run --project unit",
     "test:int": "vitest run --project int",
     "build:all": "pnpm typecheck && pnpm checkout:build",

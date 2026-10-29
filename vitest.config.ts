@@ -21,6 +21,7 @@ export default defineConfig({
             'packages/db/test/**/*.int.test.ts',
             'apps/api/test/**/*.int.test.ts',
             'apps/worker/test/**/*.int.test.ts',
+            'apps/admin/test/**/*.int.test.ts',
           ],
           globalSetup: ['packages/db/test/global-setup.ts'],
           // Files share one database; SKIP LOCKED claims in one file must not see another

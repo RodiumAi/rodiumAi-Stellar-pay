@@ -11,6 +11,7 @@ RUN corepack enable && corepack prepare pnpm@10.34.6 --activate
 WORKDIR /src
 # Dependencies first so source edits reuse the install layer.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/admin/package.json apps/admin/
 COPY apps/api/package.json apps/api/
 COPY apps/checkout/package.json apps/checkout/
 COPY apps/docs/package.json apps/docs/
@@ -24,11 +25,11 @@ COPY packages/stellar/package.json packages/stellar/
 COPY packages/telemetry/package.json packages/telemetry/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
-RUN pnpm exec tsc --build apps/api apps/worker apps/signer \
+RUN pnpm exec tsc --build apps/api apps/worker apps/signer apps/admin \
  && pnpm --filter @rp/checkout build \
  && pnpm --filter @rp/docs build
 # Production-only trees: each app with its runtime dependencies and built workspace packages.
-RUN for app in api worker signer; do \
+RUN for app in api worker signer admin; do \
       pnpm --filter "@rp/$app" deploy --legacy --prod "/out/$app" || exit 1; \
     done \
  && cp -r apps/checkout/dist /out/api/checkout \
@@ -55,6 +56,12 @@ FROM runtime AS worker
 COPY --from=build /out/worker /app
 COPY infra/supabase/supabase-root-2021-ca.crt /app/certs/supabase-root-2021-ca.crt
 EXPOSE 9090
+CMD ["dist/main.js"]
+
+FROM runtime AS admin
+COPY --from=build /out/admin /app
+COPY infra/supabase/supabase-root-2021-ca.crt /app/certs/supabase-root-2021-ca.crt
+EXPOSE 8081
 CMD ["dist/main.js"]
 
 FROM runtime AS signer

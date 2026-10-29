@@ -1,0 +1,22 @@
+{
+  "name": "@rp/admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@rp/config": "workspace:*",
+    "@rp/core": "workspace:*",
+    "@rp/db": "workspace:*",
+    "@rp/security": "workspace:*",
+    "fastify": "5.12.7",
+    "kysely": "0.29.6",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  },
+  "scripts": {
+    "start": "node dist/main.js"
+  }
+}

@@ -8,6 +8,7 @@
     { "path": "packages/stellar" },
     { "path": "packages/telemetry" },
     { "path": "apps/api" },
+    { "path": "apps/admin" },
     { "path": "apps/worker" },
     { "path": "apps/signer" },
     { "path": "apps/checkout" }
