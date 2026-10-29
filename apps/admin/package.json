@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@fastify/rate-limit": "11.2.1",
     "@rp/config": "workspace:*",
     "@rp/core": "workspace:*",
     "@rp/db": "workspace:*",
