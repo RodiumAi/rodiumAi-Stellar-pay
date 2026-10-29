@@ -74,13 +74,14 @@ describe('admin queries (rp_readonly)', () => {
     expect(
       mine(await queries.payments({ status: null, search: paid.id.toUpperCase(), before: null })),
     ).toEqual([`${tag}_paid`]);
-    // Newest first; `before` the newer one returns only the older one.
-    expect(mine(await queries.payments({ status: null, search: null, before: open.id }))).toContain(
-      `${tag}_paid`,
+    // Pages by id, newest first; `before` the larger id returns the smaller one but not itself.
+    // Both were made in the same millisecond, where UUIDv7 order is random, so compare ids.
+    const [lower, upper] = [paid, open].sort((a, b) => (a.id < b.id ? -1 : 1));
+    const page = mine(
+      await queries.payments({ status: null, search: null, before: upper?.id ?? '' }),
     );
-    expect(
-      mine(await queries.payments({ status: null, search: null, before: open.id })),
-    ).not.toContain(`${tag}_open`);
+    expect(page).toContain(lower?.merchant_order_id);
+    expect(page).not.toContain(upper?.merchant_order_id);
   });
 
   it('loads one payment with its receipts and webhooks', async () => {
