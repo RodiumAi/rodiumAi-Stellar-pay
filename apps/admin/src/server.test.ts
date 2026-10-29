@@ -180,6 +180,14 @@ describe('admin server', () => {
     expect(limited.headers['content-security-policy']).toContain("default-src 'none'");
   });
 
+  it('rate-limits failed sign-ins before checking them', async () => {
+    const { get, authenticate } = setup({ rateLimitPerMinute: 2 });
+    expect((await get(BASE, 'forged')).statusCode).toBe(401);
+    expect((await get(BASE, 'forged')).statusCode).toBe(401);
+    expect((await get(BASE, 'forged')).statusCode).toBe(429);
+    expect(authenticate).toHaveBeenCalledTimes(2);
+  });
+
   it('hides internal errors', async () => {
     const { get } = setup({
       queries: {

@@ -95,6 +95,13 @@ export function buildServer(deps: AdminDeps): FastifyInstance {
     logoutHref: deps.logoutUrl === null ? null : `${base}/logout`,
   });
 
+  // Every route, the health check included, is rate-limited per client address. Registered
+  // before the hooks and routes so it visibly covers all of them (the sign-in check included).
+  void app.register(rateLimit, {
+    max: deps.rateLimitPerMinute ?? 120,
+    timeWindow: '1 minute',
+  });
+
   app.decorateRequest('adminEmail', null);
 
   app.addHook('onSend', (_req, reply, payload, done) => {
@@ -136,12 +143,6 @@ export function buildServer(deps: AdminDeps): FastifyInstance {
 
   const email = (req: { adminEmail: string | null }): string => req.adminEmail ?? '';
 
-  // Every route, the health check included, is rate-limited per client address; routes are
-  // registered after the limiter so it applies to all of them.
-  void app.register(rateLimit, {
-    max: deps.rateLimitPerMinute ?? 120,
-    timeWindow: '1 minute',
-  });
   void app.register((scope, _opts, done) => {
     // Load balancer health check; the public listener rule only forwards the dashboard path.
     scope.get('/health/live', (_req, reply) => reply.send({ status: 'ok' }));
