@@ -33,7 +33,7 @@ Rule (§3, §16.2): newest stable release within the listed major, published at 
 | @stellar/freighter-api (S8)                          | 6.0.1            | 2025-12-03                                  |
 | uqr (S8, QR SVG, 0 deps)                             | 0.1.3            | 2026-04-03                                  |
 | axe-core (dev)                                       | 4.13.0           | 2026-08-05                                  |
-| jsdom / @types/jsdom (dev)                           | 30.1.1 / 30.0.0  | 2026-09-22                                  |
+| jsdom / @types/jsdom (dev)                           | 30.1.3 / 30.0.0  | 2026-10-15 (pulls undici 8.12.2)            |
 | pino (S2, security)                                  | 10.3.1           | 2026-02-09 (10.4.0 is < 14 days)            |
 | @aws-sdk/client-kms (S10)                            | 3.1145.0         | 2026-10-01 (+25 packages, ~15 MB)           |
 | @opentelemetry/api (S10)                             | 1.9.1            | 2026-03-25                                  |
