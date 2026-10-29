@@ -171,6 +171,15 @@ describe('admin server', () => {
     expect(authenticate).not.toHaveBeenCalled();
   });
 
+  it('rate-limits each client address', async () => {
+    const { get } = setup({ rateLimitPerMinute: 2 });
+    expect((await get(BASE)).statusCode).toBe(200);
+    expect((await get(`${BASE}/payments`)).statusCode).toBe(200);
+    const limited = await get(BASE);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.headers['content-security-policy']).toContain("default-src 'none'");
+  });
+
   it('hides internal errors', async () => {
     const { get } = setup({
       queries: {

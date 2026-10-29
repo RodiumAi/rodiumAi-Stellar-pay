@@ -20,6 +20,8 @@ nothing: refunds, key rotation and settings stay in the runbooks until later pha
 - **Hardened pages.** Server-rendered HTML with escaping by default (`src/html.ts`), no scripts
   (`script-src` is not allowed at all), styles only from its own stylesheet, `no-store`,
   `noindex`, never framed. Each request is logged with the signed-in email (access trail).
+- **Rate-limited** per client address (120 requests a minute; the load balancer is the only
+  trusted proxy hop). Refused sign-ins and rate-limit hits are logged with `security: true`.
 - **Mounted under a configurable path** (`ADMIN_BASE_PATH`); the path itself is not a secret.
 
 ## Configuration
