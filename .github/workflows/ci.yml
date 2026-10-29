@@ -107,6 +107,16 @@ jobs:
       - run: sha256sum target/wasm32v1-none/release/subscription.wasm
       - run: cargo deny check
       - run: cargo audit
+      # rust-lang/rust-clippy renamed `master` to `main`, but the dylint 4.1.2 that Scout 0.3.17 builds
+      # still clones it and checks out `master`. Serve that clone from a local mirror whose HEAD is
+      # `master`. Drop this step once Scout ships a dylint that checks out `main`.
+      - name: rust-clippy `master` for Scout
+        run: |
+          mirror="$RUNNER_TEMP/rust-clippy.git"
+          git clone --quiet --bare https://github.com/rust-lang/rust-clippy "$mirror"
+          git -C "$mirror" branch master main
+          git -C "$mirror" symbolic-ref HEAD refs/heads/master
+          git config --global url."$mirror".insteadOf https://github.com/rust-lang/rust-clippy
       # Blocks on critical/medium/minor; enhancements are explained in docs/security/contract-review.md.
       - run: |
           cargo scout-audit -o json --output-path scout.json
