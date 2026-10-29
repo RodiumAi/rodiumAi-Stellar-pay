@@ -14,3 +14,4 @@ Mirrors context §12.4. Every secret: holder, rotation, where it is defined in c
 | Local dev KMS master key              | developer machine only      | n/a — never in staging/production | `createLocalDevKms`                                        |
 | Keeper signing key                    | signer only                 | 180 days or on suspicion          | S9                                                         |
 | ExchangeRate-API key                  | API                         | yearly or on suspicion            | S6                                                         |
+| `rp_readonly` database URL            | admin dashboard             | 90 days (role password)           | `apps/admin/src/admin-config.ts`                           |

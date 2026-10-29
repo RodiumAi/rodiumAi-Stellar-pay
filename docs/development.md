@@ -21,20 +21,21 @@ RodiumAI app ──HMAC API──▶ API ──▶ Supabase Postgres / Upstash R
 
 ## Repository layout
 
-| Path                     | What it is                                                                         |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| `apps/api`               | Fastify API: payments, subscriptions, hosted checkout, health                      |
-| `apps/worker`            | Ledger ingestion, matching, charges, webhooks (outbox), expiry, maintenance, stats |
-| `apps/signer`            | Keeper signer: mTLS-only, signs exactly one `charge` or TTL extension              |
-| `apps/checkout`          | Checkout page front end (Vite, vanilla TS, Freighter + SEP-7 QR)                   |
-| `packages/core`          | Money, state machines, IDs — pure TypeScript, no I/O                               |
-| `packages/config`        | Configuration parsing, network constants, secrets from mounted files               |
-| `packages/security`      | HMAC auth, webhook signatures, envelope encryption, KMS adapters, mTLS files       |
-| `packages/db`            | Kysely repositories, SQL migrations, role bootstrap                                |
-| `packages/stellar`       | Horizon/RPC ledger sources, XDR guards, Soroban helpers                            |
-| `packages/telemetry`     | OpenTelemetry tracing helpers                                                      |
-| `contracts/subscription` | Soroban subscription contract (Rust)                                               |
-| `infra/`                 | Docker images, Kubernetes manifests, alert rules, Supabase/Upstash checklists      |
+| Path                     | What it is                                                                              |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `apps/api`               | Fastify API: payments, subscriptions, hosted checkout, health                           |
+| `apps/worker`            | Ledger ingestion, matching, charges, webhooks (outbox), expiry, maintenance, stats      |
+| `apps/admin`             | Read-only operations dashboard behind load-balancer sign-in ([docs/admin.md](admin.md)) |
+| `apps/signer`            | Keeper signer: mTLS-only, signs exactly one `charge` or TTL extension                   |
+| `apps/checkout`          | Checkout page front end (Vite, vanilla TS, Freighter + SEP-7 QR)                        |
+| `packages/core`          | Money, state machines, IDs — pure TypeScript, no I/O                                    |
+| `packages/config`        | Configuration parsing, network constants, secrets from mounted files                    |
+| `packages/security`      | HMAC auth, webhook signatures, envelope encryption, KMS adapters, mTLS files            |
+| `packages/db`            | Kysely repositories, SQL migrations, role bootstrap                                     |
+| `packages/stellar`       | Horizon/RPC ledger sources, XDR guards, Soroban helpers                                 |
+| `packages/telemetry`     | OpenTelemetry tracing helpers                                                           |
+| `contracts/subscription` | Soroban subscription contract (Rust)                                                    |
+| `infra/`                 | Docker images, Kubernetes manifests, alert rules, Supabase/Upstash checklists           |
 
 ## Requirements
 
@@ -122,7 +123,7 @@ under `/run/secrets`) and the CA file must be mounted at the path in `sslrootcer
 
 ## Deployment
 
-- **Images:** `infra/docker/Dockerfile` (`--target api|worker|signer`) — distroless, non-root,
+- **Images:** `infra/docker/Dockerfile` (`--target api|worker|signer|admin`) — distroless, non-root,
   read-only filesystem, no shell. `.github/workflows/images.yml` publishes them to GHCR from `main`
   (and weekly), signed with cosign, with SBOM and SLSA provenance.
 - **AWS (ECR + ECS):** images are pushed to Amazon ECR from `main` and deployed to ECS by the
