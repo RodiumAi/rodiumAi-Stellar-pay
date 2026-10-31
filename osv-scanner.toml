@@ -21,3 +21,10 @@ reason = "fast-uri via fastify; fix clears release age 2026-11-02"
 id = "GHSA-xhq7-xmqj-769h"
 ignoreUntil = 2026-11-03T00:00:00Z
 reason = "fast-uri via fastify; fix clears release age 2026-11-02"
+
+# follow-redirects 1.16.2 (2026-10-25): via @stellar/stellar-sdk > axios. No auth headers or
+# credentials go through the SDK, so the cross-host redirect leak does not apply.
+[[IgnoredVulns]]
+id = "GHSA-mrwp-f3q8-3g9p"
+ignoreUntil = 2026-11-09T00:00:00Z
+reason = "follow-redirects via stellar-sdk axios; fix clears release age 2026-11-08"

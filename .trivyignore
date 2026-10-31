@@ -5,3 +5,8 @@
 # load it: the Node binary links OpenSSL statically and none of them speak DTLS. Fixed in
 # Debian 3.0.22-1~deb12u2; remove this entry when distroless publishes a patched digest.
 CVE-2026-84782 exp:2026-11-10
+
+# follow-redirects 1.16.1 via @stellar/stellar-sdk > axios (GHSA-mrwp-f3q8-3g9p). No auth headers
+# or credentials go through the SDK. Fix 1.16.2 clears pnpm's 14-day release age on 2026-11-08.
+CVE-2026-116689 exp:2026-11-09
+GHSA-mrwp-f3q8-3g9p exp:2026-11-09
