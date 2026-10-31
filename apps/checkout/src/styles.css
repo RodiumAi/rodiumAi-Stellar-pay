@@ -448,6 +448,12 @@ dd code {
     border-left: 0;
     border-top: 1px solid var(--border);
   }
+  /* Payment page on phones: QR code and pay buttons first, details below. */
+  .checkout.payment .pane.pay {
+    order: -1;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+  }
   .pane {
     padding: 24px 20px;
   }

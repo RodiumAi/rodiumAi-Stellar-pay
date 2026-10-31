@@ -119,7 +119,7 @@ export function renderPaymentPage(m: PaymentPageModel): string {
 <body>
 ${checkoutHeader(m.networkName)}
 <main>
-<section class="checkout" aria-labelledby="title">
+<section class="checkout payment" aria-labelledby="title">
 <div class="pane details">
 <span class="tag">Payment</span>
 <h1 id="title">${escapeHtml(m.description)}</h1>
@@ -140,7 +140,7 @@ ${fact('Asset issuer', m.assetIssuer)}
 <div class="qr-box">${qr}</div>
 <p class="hint center">Scan with a mobile wallet (LOBSTR, xBull…) or pay from your browser.</p>
 <div class="actions">
-<button type="button" class="btn primary" id="pay-freighter">Pay with Freighter</button>
+<button type="button" class="btn primary" id="pay-freighter">Pay with Varial</button>
 <a class="btn" href="${escapeHtml(m.payUri)}">Open in a Stellar wallet</a>
 </div>
 <p class="note">Always include the memo, or the payment cannot be matched.</p>

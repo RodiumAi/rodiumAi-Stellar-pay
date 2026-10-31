@@ -68,7 +68,7 @@ async function poll(): Promise<void> {
 
 document.getElementById('pay-freighter')?.addEventListener('click', () => {
   setBusy(document, true);
-  setText(document, 'wallet-message', 'Opening Freighter…');
+  setText(document, 'wallet-message', 'Opening wallet…');
   // Wallet code loads only on interaction (§11.4: initial JS budget).
   void import('./wallet.js')
     .then(({ payWithFreighter }) => payWithFreighter(data))
