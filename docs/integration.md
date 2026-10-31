@@ -844,13 +844,13 @@ Source: `apps/api/src/checkout/routes.ts`, `apps/api/src/checkout/subscription-c
 
 One-time payment (`GET /c/{token}` while `pending`/`underpaid`):
 
-- Description, the **remaining** USDC amount, asset and issuer, destination address, the memo (format `RP` + 12 characters), expiry time, a QR code / `web+stellar:pay` link for mobile wallets, and a "Pay with Freighter" button.
+- Description, the **remaining** USDC amount, asset and issuer, destination address, the memo (format `RP` + 12 characters), expiry time, a QR code / `web+stellar:pay` link for mobile wallets, and a "Pay with Varial" button (signs with the Freighter browser extension).
 - If `underpaid`: "Partially paid, send the remaining amount".
 - Once the payment is final the page itself returns 404; the status endpoint still answers.
 
 Subscription (`GET /c/{token}` while `incomplete`):
 
-- Plan code, price "every N days", network, "First charge: <price> USDC today", "You approve: Up to N future charges of <price> USDC" (N = `SUBSCRIPTION_APPROVE_PERIODS`, default 3), the contract id, and "Subscribe with Freighter". Subscriptions need Freighter (a Soroban-capable wallet); there is no QR flow.
+- Plan code, price "every N days", network, "First charge: <price> USDC today", "You approve: Up to N future charges of <price> USDC" (N = `SUBSCRIPTION_APPROVE_PERIODS`, default 3), the contract id, and "Subscribe with Varial" (Freighter browser extension). Subscriptions need Freighter (a Soroban-capable wallet); there is no QR flow.
 
 ### 6.3 Return to your app
 
@@ -1409,7 +1409,7 @@ console.log((await horizon.submitTransaction(tx)).hash);
 
 | #   | Scenario              | How                                                                                                           | Expect                                                                                                 |
 | --- | --------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1   | Full payment          | Create a 5.00 USD payment in your app, open checkout, "Pay with Freighter", sign                              | `payment.confirmed`; access granted; redirect to return_url; return page shows paid                    |
+| 1   | Full payment          | Create a 5.00 USD payment in your app, open checkout, "Pay with Varial", sign                                 | `payment.confirmed`; access granted; redirect to return_url; return page shows paid                    |
 | 2   | Underpayment + top-up | Create 3.00 USD. In Freighter, send 1 USDC to the shown destination **with the shown memo**; then send 2 more | `payment.underpaid`, then `payment.confirmed` with two `tx_hashes`                                     |
 | 3   | Expiry                | Create a payment, do not pay, wait past `expires_at` (20 min default)                                         | `payment.expired`; redirect (if page open); your order expired; new attempt possible                   |
 | 4   | Late payment          | After #3, pay the old memo                                                                                    | `payment.late_paid`; no access; support case created                                                   |

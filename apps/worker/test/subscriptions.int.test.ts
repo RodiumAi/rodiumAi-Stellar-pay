@@ -214,21 +214,25 @@ describe('charging (context §15)', () => {
     chain.nextChargeAt = BigInt(Math.floor(now.getTime() / 1000) + 30 * 86_400);
     const { job, metrics } = chargeJob(chain, () => now);
     await job.run(never);
-    const [charge] = await charges(sub.id);
-    expect(charge).toMatchObject({
+    const rows = await charges(sub.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
       status: 'succeeded',
       period_index: 1,
       attempt: 1,
       amount_stroops: 99_900_000n,
     });
-    expect(charge?.tx_hash).toHaveLength(32);
+    expect(rows[0]?.tx_hash).toHaveLength(32);
     expect(await findSubscriptionById(worker, sub.id)).toMatchObject({
       status: 'active',
       failed_attempts: 0,
       next_charge_at: new Date(Number(chain.nextChargeAt) * 1000),
     });
-    expect(chain.sent).toBe(1);
-    expect(metrics.get('charges_succeeded_total')).toBe(1);
+    // A file running in parallel can add a due subscription after the drain above, and this
+    // run charges it too: count this subscription's charge above, and here only that every
+    // send succeeded.
+    expect(chain.sent).toBeGreaterThanOrEqual(1);
+    expect(metrics.get('charges_succeeded_total')).toBe(chain.sent);
   });
 
   it('a failed simulation records a failed charge, goes past_due, and submits nothing', async () => {
