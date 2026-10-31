@@ -87,7 +87,7 @@ ${fact('Contract', m.contractId, 'contract')}
 <li><strong>Cancel anytime</strong><span>or revoke the approval in your wallet.</span></li>
 </ol>
 <div class="actions">
-<button type="button" class="btn primary" id="pay-freighter">Subscribe with Freighter</button>
+<button type="button" class="btn primary" id="pay-freighter">Subscribe with Varial</button>
 </div>
 <p id="wallet-message" class="hint center" role="status" aria-live="polite"></p>
 <p class="visually-hidden" id="received"></p>

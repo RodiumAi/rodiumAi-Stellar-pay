@@ -213,7 +213,7 @@ describe('GET /c/:token', () => {
     const doc = dom.window.document;
     const button = doc.getElementById('pay-freighter');
     expect(button?.tagName).toBe('BUTTON');
-    expect(button?.textContent).toBe('Pay with Freighter');
+    expect(button?.textContent).toBe('Pay with Varial');
     expect(doc.documentElement.getAttribute('lang')).toBe('en');
   });
 });
