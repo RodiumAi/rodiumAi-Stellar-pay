@@ -114,7 +114,10 @@ export function createRpcSource(config: RpcSourceConfig, client: RpcClient): Led
           itemIndex: event.operationIndex,
           ledger: event.ledger,
           ledgerClosedAt: new Date(event.ledgerClosedAt),
-          successful: event.inSuccessfulContractCall && tx !== null,
+          // tx is null unless getTransaction reports SUCCESS; newer RPC servers omit the
+          // (deprecated) inSuccessfulContractCall flag, so only an explicit false counts.
+          // eslint-disable-next-line @typescript-eslint/no-deprecated -- older RPC servers still send it
+          successful: event.inSuccessfulContractCall !== false && tx !== null,
           from: fromVal === undefined ? '' : String(scValToNative(fromVal)),
           to: config.merchant,
           asset:

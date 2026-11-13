@@ -12,7 +12,7 @@
     "@rp/security": "workspace:*",
     "@rp/stellar": "workspace:*",
     "@rp/telemetry": "workspace:*",
-    "@stellar/stellar-sdk": "17.2.1",
+    "@stellar/stellar-sdk": "17.4.0",
     "@upstash/ratelimit": "2.2.0",
     "@upstash/redis": "1.39.0",
     "fastify": "5.12.7",
