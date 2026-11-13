@@ -8,10 +8,7 @@ minimumReleaseAge: 20160
 strictPeerDependencies: true
 # Lifecycle scripts are blocked unless the package is listed here.
 onlyBuiltDependencies: []
-# Accepted audit findings until the fix clears minimumReleaseAge; then bump and drop the entry.
-# follow-redirects 1.16.1 via @stellar/stellar-sdk > axios (API, worker, signer). StelPay sends no
-# auth headers or credentials through the SDK, so the redirect leak does not apply. Fix 1.16.2
-# clears the 14-day release age on 2026-11-08.
-auditConfig:
-  ignoreGhsas:
-    - GHSA-mrwp-f3q8-3g9p
+# minimatch < 11.0.1: glob DoS (GHSA-g3hv-75wg-m249). Dev only (eslint, typescript-eslint), which
+# still ask for ^10; drop this once they accept 11.
+overrides:
+  minimatch: ^11.0.1
