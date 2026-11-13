@@ -30,6 +30,16 @@ for pm in /usr/bin/apt /usr/bin/apt-get /usr/bin/dpkg /sbin/apk /usr/local/bin/n
 done
 echo "ok: no package manager"
 
+# Node links OpenSSL statically; a system libssl would only add CVEs to scan.
+if docker run --rm --entrypoint /nodejs/bin/node "$image" -e "
+  const fs = require('node:fs');
+  const dirs = ['/lib', '/usr/lib', ...fs.readdirSync('/usr/lib').filter((d) => d.endsWith('-linux-gnu')).map((d) => '/usr/lib/' + d)];
+  process.exit(dirs.some((d) => fs.existsSync(d) && fs.readdirSync(d).some((f) => f.startsWith('libssl.so'))) ? 0 : 1)
+" 2>/dev/null; then
+  echo "FAIL: system libssl present"; exit 1
+fi
+echo "ok: no system libssl"
+
 # With no configuration the service must exit 1 with a config error, not a crash.
 set +e
 out=$(docker run --rm --read-only --cap-drop ALL --network none "$image" 2>&1)
