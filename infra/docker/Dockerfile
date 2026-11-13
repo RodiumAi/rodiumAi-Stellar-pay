@@ -34,10 +34,16 @@ RUN for app in api worker signer admin; do \
     done \
  && cp -r apps/checkout/dist /out/api/checkout \
  && cp -r apps/docs/dist /out/api/docs
+# Node's C++ runtime libraries, kept at their multiarch paths for the runtime image.
+RUN mkdir -p /out/syslib \
+ && cp -a --parents /usr/lib/*-linux-gnu/libstdc++.so.6* /usr/lib/*-linux-gnu/libgcc_s.so.1 /out/syslib/
 
-# distroless/cc (glibc + libstdc++, no shell) plus the exact Node binary from the build
-# image: distroless/nodejs24 lagged behind (24.14.0 vs the pinned 24.21.0 at the time).
-FROM gcr.io/distroless/cc-debian12:nonroot@sha256:9dac0a79194e45a7da0158a9c6da57b217585af0786db3845d1f0ec1a0dd182f AS runtime
+# distroless/base-nossl (glibc, CA certificates, no shell, no libssl) plus the two C++
+# runtime libraries and the exact Node binary from the build image. Node links OpenSSL
+# statically, so the system libssl3 that distroless/cc ships was never loaded and only
+# brought its CVEs. distroless/nodejs24 lagged behind the pinned Node version.
+FROM gcr.io/distroless/base-nossl-debian12:nonroot@sha256:be40c00dfabd86576d92666e87e406714d5618342de1a0c213ad232de255172e AS runtime
+COPY --from=build /out/syslib/ /
 COPY --from=build /usr/local/bin/node /nodejs/bin/node
 WORKDIR /app
 ENV NODE_ENV=production
