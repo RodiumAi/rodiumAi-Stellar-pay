@@ -43,7 +43,10 @@ export function parseSubscriptionEvent(
   e: rpc.Api.EventResponse,
   contractId: string,
 ): ParsedEvent | null {
-  if (e.contractId?.contractId() !== contractId || !e.inSuccessfulContractCall) {
+  // Newer RPC servers omit inSuccessfulContractCall (SDK 17.3: optional, deprecated); they
+  // return events of successful calls only. Reject only an explicit false.
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- older RPC servers still send it
+  if (e.contractId?.contractId() !== contractId || e.inSuccessfulContractCall === false) {
     return null;
   }
   const [nameVal, idVal] = e.topic;

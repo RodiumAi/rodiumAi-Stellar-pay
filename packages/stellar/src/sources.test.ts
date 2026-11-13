@@ -58,6 +58,11 @@ function horizonRecord(overrides: Record<string, unknown> = {}, tx: Record<strin
 const classify = (raw: unknown) =>
   fromHorizonRecord(raw, merchant).map((p) => classifyPayment(p, rules));
 
+/** The event as newer RPC servers return it: without the deprecated success flag. */
+const withoutSuccessFlag = (e: rpc.Api.EventResponse): rpc.Api.EventResponse =>
+  Object.fromEntries(
+    Object.entries(e).filter(([key]) => key !== 'inSuccessfulContractCall'),
+  ) as unknown as rpc.Api.EventResponse;
 describe('Horizon records → classification (context §13.2)', () => {
   it('plain USDC payment with memo is eligible', () => {
     expect(classify(horizonRecord())).toEqual([
@@ -364,12 +369,25 @@ describe('createRpcSource (CAP-67 transfer events)', () => {
     expect(p?.amount).toBe('0.0000005');
   });
 
+  it('treats a missing inSuccessfulContractCall as successful, an explicit false as failed', async () => {
+    const amount = nativeToScVal(1n, { type: 'i128' });
+    const withoutFlag = withoutSuccessFlag(transferEvent(amount));
+    const failed = transferEvent(amount, { inSuccessfulContractCall: false });
+    const c = client([withoutFlag, failed], envelope([]));
+    const page = await createRpcSource(config, c).fetchPayments({ cursor: 'x' }, 10);
+    expect(page.payments.map((p) => p.successful)).toEqual([true, false]);
+  });
+
   it('flags transfers from contract calls (subscription charges)', async () => {
     const invoke = new Contract(StrKey.encodeContract(randomBytes(32))).call(
       'charge',
       nativeToScVal(1n, { type: 'u64' }),
     );
-    const c = client([transferEvent(nativeToScVal(1n, { type: 'i128' }))], envelope([invoke]));
+    // Soroban transactions cannot carry a memo (the SDK refuses to build one since 17.3).
+    const c = client(
+      [transferEvent(nativeToScVal(1n, { type: 'i128' }))],
+      envelope([invoke], Memo.none()),
+    );
     const [p] = (await createRpcSource(config, c).fetchPayments({ cursor: 'x' }, 10)).payments;
     expect(p && classifyPayment(p, rules)).toEqual({
       kind: 'ignored',
@@ -453,6 +471,24 @@ describe('parseSubscriptionEvent', () => {
     ).toBeNull();
     expect(parseSubscriptionEvent(event('plan_set', v), contractId)).toBeNull();
     expect(parseSubscriptionEvent(event('charged', v), contractId)).toBeNull();
+  });
+
+  it('accepts events without inSuccessfulContractCall and rejects an explicit false', () => {
+    const charged = nativeToScVal(
+      { amount: 5n, next_charge_at: 9n },
+      { type: { amount: ['symbol', 'i128'], next_charge_at: ['symbol', 'u64'] } },
+    );
+    // Newer RPC servers omit the field (deprecated in SDK 17.3).
+    const withoutFlag = withoutSuccessFlag(event('charged', charged));
+    expect(parseSubscriptionEvent(withoutFlag, contractId)?.event).toMatchObject({
+      type: 'charged',
+    });
+    expect(
+      parseSubscriptionEvent(
+        { ...event('charged', charged), inSuccessfulContractCall: false },
+        contractId,
+      ),
+    ).toBeNull();
   });
 });
 
