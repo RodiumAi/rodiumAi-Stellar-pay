@@ -35,8 +35,10 @@ RUN for app in api worker signer admin; do \
  && cp -r apps/checkout/dist /out/api/checkout \
  && cp -r apps/docs/dist /out/api/docs
 # Node's C++ runtime libraries, kept at their multiarch paths for the runtime image.
+# (relative to / because cp --parents resolves parent directories from the working dir)
 RUN mkdir -p /out/syslib \
- && cp -a --parents /usr/lib/*-linux-gnu/libstdc++.so.6* /usr/lib/*-linux-gnu/libgcc_s.so.1 /out/syslib/
+ && cd / && cp -a --parents usr/lib/*-linux-gnu/libstdc++.so.6* usr/lib/*-linux-gnu/libgcc_s.so.1 /out/syslib/ \
+ && ls -l /out/syslib/usr/lib/*-linux-gnu/
 
 # distroless/base-nossl (glibc, CA certificates, no shell, no libssl) plus the two C++
 # runtime libraries and the exact Node binary from the build image. Node links OpenSSL
